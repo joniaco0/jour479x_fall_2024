@@ -14,6 +14,8 @@ We'll want to start with 2023 match data, which is located in [this GitHub repos
 
 ```{r}
 matches_2023 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2023.csv")
+matches_2022 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2022.csv")
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv")
 ```
 
 Let's take a look at this data to see what it contains, using `head` and `glimpse`:
@@ -28,24 +30,138 @@ Now, onto the questions using aggregates, which means `group_by` and `summarize`
 1. How many shots in total has Maryland attempted and how many have been on goal? Calculate a percentage of shots on goal.
 
 ```{r}
-
+ncaatt <- matches_2023 |>
+  group_by(team) |>
+  summarize(total_shot_attempts = sum(sh_att))
+ncaagoal <- matches_2023 |>
+  group_by(team) |>
+  summarize(goals = sum(goals))
+umdsh <- ncaatt |>
+  filter (team == "Maryland Terrapins, Terps") |>
+  pull(total_shot_attempts)
+umdgoal<- ncaagoal |>
+  filter (team == "Maryland Terrapins, Terps") |>
+  pull(goals)
+shotper <- umdgoal/umdsh
+print("Shots")
+umdsh
+print("Goals")
+umdgoal
+print("Shot Percentage")
+shotper
 ```
+Maryland attempted 180 Shots and netted 9, making it a 5% shot percentage
 
 2. What about the same shot stats from last season's first four games? You'll need to load the matches from 2022 - just change the season in the URL - and filter by date to find the first four games.
 
 ```{r}
+umdgames <- matches_2022 |>
+  filter(team == "Maryland Terrapins, Terps")
+first_four_games_2022 <- umdgames |>
+  arrange(date) |>
+  slice_head(n = 4)
+umdatt <- first_four_games_2022 |>
+  group_by(team) |>
+  summarize(total_shot_attempts = sum(sh_att)) |>
+  pull(total_shot_attempts)
+umdgoal <- first_four_games_2022 |>
+  group_by(team) |>
+  summarize(goals = sum(goals)) |>
+  pull(goals)
+umdgoal/umdatt
+
 
 ```
+UMD had an 8% shot percentage in the first four games of 2022
 
 
 3. What about draws - Maryland started 2022 with 4 ties. Have any other teams had as many this season?
 
 ```{r}
+draws <- matches_2024|>
+  filter (team_score == opponent_score)
+drawcount <- draws|>
+  group_by(team) |>
+  summarize(total = n()) |>
+  arrange(desc(total))
+drawcount
+  
+
+
 ```
+No, six teams have reached 3 ties, but no one has reached 4
 
 
 4. How many total corner kicks has Maryland had so far and how many have its opponents have? Calculate the difference between the two totals for every team.
 
 ```{r}
+
+umdgames <- matches_2024 |>
+  filter(team == "Maryland Terrapins, Terps")
+umdcorners <- umdgames |>
+  summarize(total_team_corners = sum(corners))
+umdopp <- matches_2024 |>
+  filter(opponent == "Maryland")
+umdoppcorners <- umdopp |>
+  summarize(total_opponent_corners = sum(corners))
+umdsummary <- umdcorners |>
+  left_join(umdoppcorners, by = character()) |>
+  mutate(difference = total_team_corners - total_opponent_corners)
+
+lehighgames <- matches_2024 |>
+  filter(team == "Lehigh Mountain Hawks")
+lehighcorners <- lehighgames |>
+  summarize(total_team_corners = sum(corners))
+lehighopp <- matches_2024 |>
+  filter(opponent == "Lehigh")
+lehighoppcorners <- lehighopp |>
+  summarize(total_opponent_corners = sum(corners))
+lehighsummary <- lehighcorners |>
+  left_join(lehighoppcorners, by = character()) |>
+  mutate(difference = total_team_corners - total_opponent_corners)
+
+stbgames <- matches_2024 |>
+  filter(team == "Stony Brook Seawolves")
+stbcorners <- stbgames |>
+  summarize(total_team_corners = sum(corners))
+stbopp <- matches_2024 |>
+  filter(opponent == "Stony Brook")
+stboppcorners <- stbopp |>
+  summarize(total_opponent_corners = sum(corners))
+stbsummary <- stbcorners |>
+  left_join(stboppcorners, by = character()) |>
+  mutate(difference = total_team_corners - total_opponent_corners)
+
+augames <- matches_2024 |>
+  filter(team == "American Eagles")
+aucorners <- augames |>
+  summarize(total_team_corners = sum(corners))
+auopp <- matches_2024 |>
+  filter(opponent == "American")
+auoppcorners <- auopp |>
+  summarize(total_opponent_corners = sum(corners))
+ausummary <- aucorners |>
+  left_join(auoppcorners, by = character()) |>
+  mutate(difference = total_team_corners - total_opponent_corners)
+
+navygames <- matches_2024 |>
+  filter(team == "Navy Midshipmen")
+navycorners <- navygames |>
+  summarize(total_team_corners = sum(corners))
+navyopp <- matches_2024 |>
+  filter(opponent == "Navy")
+navyoppcorners <- navyopp |>
+  summarize(total_opponent_corners = sum(corners))
+navysummary <- navycorners |>
+  left_join(navyoppcorners, by = character()) |>
+  mutate(difference = total_team_corners - total_opponent_corners)
+
+umdsummary
+lehighsummary
+ausummary
+stbsummary
+navysummary
+
+
 ```
 
