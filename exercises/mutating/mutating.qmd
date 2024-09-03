@@ -11,7 +11,9 @@ So first we'll import the tidyverse so we can read in our data and begin to work
 ```{r}
 #| warning: false
 #| message: false
+# load the tidyverse here
 library(tidyverse)
+
 ```
 
 Now you'll need a common and simple dataset of total attendance at NCAA football games over the last few seasons.
@@ -52,33 +54,36 @@ head(attendance)
 What's one thing you notice about the data that might make year-over-year comparisons more complex?
 
 **Answer** DESCRIBE IT HERE
+Some teams were in different confrences which can make the data duplicate for certain years. for example, App State was an FBS indpendant and then joined the Sun Belt
 
-The code to calculate percent change is pretty simple. Remember, with `summarize`, we used `n()` to count things. With `mutate`, we use very similar syntax to calculate a new value using other values in our dataset. So in this case, we're trying to do (new-old)/old, but we're doing it with fields. If we look at what we got when we did `head`, you'll see there's \`2022\` as the new data, and we'll use \`2021\` as the old data. So we're looking at one year. Then, to help us, we'll use arrange again to sort it, so we get the fastest growing school over one year.
+The code to calculate percent change is pretty simple. Remember, with `summarize`, we used `n()` to count things. With `mutate`, we use very similar syntax to calculate a new value using other values in our dataset. So in this case, we're trying to do (new-old)/old, but we're doing it with fields. If we look at what we got when we did `head`, you'll see there's \`2023\` as the new data, and we'll use \`2022\` as the old data. So we're looking at one year. Then, to help us, we'll use arrange again to sort it, so we get the fastest growing school over one year.
 
 ```{r}
 attendance |> mutate(
-  change = (`2022` - `2021`)/`2021`
+  change = (`2023` - `2022`)/`2022`
 ) 
 ```
-What do we see right away? Do those numbers look like we expect them to? No. They're a decimal expressed as a percentage. So let's fix that by multiplying by 100. 
+
+What do we see right away? Do those numbers look like we expect them to? No. They're a decimal expressed as a percentage. So let's fix that by multiplying by 100.
 
 ```{r}
 attendance |> mutate(
-  change = ((`2022` - `2021`)/`2021`)*100
+  change = ((`2023` - `2022`)/`2022`)*100
 ) 
 ```
-Now, does this ordering do anything for us? No. Let's fix that with arrange. 
+
+Now, does this ordering do anything for us? No. Let's fix that with arrange.
 
 ```{r}
 attendance |> mutate(
-  change = ((`2022` - `2021`)/`2021`)*100
+  change = ((`2023` - `2022`)/`2022`)*100
 ) |> arrange(desc(change))
 ```
 
-Who had the most growth in 2022 compared to the year before? What could account for that change? And what team(s) are the most interesting here?
+Who had the most growth in 2023 compared to the year before? What could account for that change? And what team(s) are the most interesting here?
 
 **Answer** YOUR ANSWER HERE
-
+Houston had the biggest jump in attendance by 69%, followed by South Florida and Arizona State. For Houston, the move to the Big 12 could have contributed to it's big attendance jump. An intresting school is Maryland, which could have seen a big attendance jump due to intresting games such as their UVA and Penn State "Rivarly" games that didn't exist in 2022. 
 ## Back to women's soccer
 
 Let's turn back to the women's soccer match data from this season.
@@ -86,22 +91,23 @@ Let's turn back to the women's soccer match data from this season.
 Import it like this:
 
 ```{r}
-matches_2023 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2023.csv")
+matches_2024 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv")
 ```
 
 Previously we calculated totals for shots attempted and shots on goal for each time. Now let's do shots on goal and goals, using group_by() and summarize(), and then we'll use mutate to add a percentage to that and see what stands out.
 
 ```{r}
-matches_2023 |> 
-  group_by(REPLACE WITH GROUP_BY) |> 
+matches_2024 |> 
+  group_by(team) |> 
   summarise(
-    total_on_goal = REPLACE WITH FORMULA,
-    total_goals = REPLACE WITH FORMULA
-  ) |> 
-  mutate(percent = REPLACE WITH FORMULA) |> 
+    total_on_goal = sum(so_g), 
+    total_goals = sum(goals)
+  ) |>
+  mutate(percent = total_goals/total_on_goal) |> 
   arrange(desc(percent))
 ```
 
 What stands out to you here? Describe that below. Would you narrow down the results to certain teams based on the data? If so, do that in the code and explain why you did it below. Finally, what's the most interesting result to you that could be a story?
 
 **Answer** YOUR ANSWER HERE
+If I were to try to do a data analysis of this, I would make sure that there were enough shot attempts to warrant having the highest percentage of shots on target to goals. For example, JMU only has 12 shots on target to 7 goals, where as The citdel has 32 shots on target to 18 goals. What may be better is to add an extra parameter in the percentage of shots in general or a minimum SOG parameter. An intresting story could be that Navy has 20 goals and a high conversion percentage, but has struggled to turn that to wins at times, why is this? How much of it is impacted by playing schools like "Wilson College" 

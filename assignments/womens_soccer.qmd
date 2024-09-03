@@ -164,4 +164,8 @@ navysummary
 
 
 ```
+'''{r}
+matches_2024 |> 
+  filter(corners >= 9, defensive_corners =< 1, outcome == loss)
+
 
