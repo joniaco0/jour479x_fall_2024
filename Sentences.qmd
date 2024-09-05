@@ -1,0 +1,13 @@
+```{r}
+library(tidyverse)
+```
+```{r}
+soccer <- read_csv("https://dwillis.github.io/sports-data-files/ncaa_womens_soccer_totals_2023.csv")
+soccer |>
+  mutate(SoGPct = (SoG/ShAtt)*100
+) |>
+  select(Institution,Conference,SoGPct) |>
+  arrange(desc(SoGPct))
+
+```
+The most interesting part of the shots on goals is the dominance of the SWAC and other Mid-major conferences in this top 10. The next best "Power 4" team is Iowa St, which is all the way near 50%, compared to Prairie View A&Ms 69%. This could be telling on of the defense played in these conferences, and the inability to get as many shots on goals in better ranked conferences such as the Big Ten. It could also be telling on some of the striking in these conferences being emphasized when it comes to recruiting, with limited resources they'd rather get scoring rather than defense. 
