@@ -17,8 +17,10 @@ Using the tidyverse's `pivot_longer` function, turn the currently wide data into
 ```{r}
 attendance_longer <- attendance |> pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Attendance")
 
-attendance_longer |> filter(Attendance >= 500000)
-
+attendance_longer |> filter(Attendance >= 500000) |>
+  group_by((Institution)) |>
+summarize (years = n()) |>
+  filter(years == 1)
 ```
 
 Let's try to figure out whether football attendance has returned to "normal" by 2023, defining "normal" as 2019 figures. For that we'll need to isolate those two years using `filter()` and get rid of any NAs:
@@ -42,3 +44,4 @@ attendance_wide <- attendance_wide |> mutate(percent = (`2023`-`2019`)/`2019`*10
 Some of these clearly are influenced by performance on the field. Below, describe the most interesting results (positive or negative) and what you think might be going on with them. Feel free to do some googling and describe what other data would be helpful to clarify what the best stories here might be. What surprises you about these results?
 
 **ANSWER**
+A pretty intresting finding was UNLV's increase in attendance. UNLV's full name is the University of Nevada Las Vegas, and has a stadium on campus that is renovated but chose to move to Allegiant Stadium in 2020. This is the biggest change from 2019 to 2023 with the only difference being UNLV being good in Mountain West play in 2023. So this move could have the numbers to show that it was a good choice.
