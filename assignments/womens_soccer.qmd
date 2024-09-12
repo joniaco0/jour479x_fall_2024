@@ -95,7 +95,6 @@ No, six teams have reached 3 ties, but no one has reached 4
 4. How many total corner kicks has Maryland had so far and how many have its opponents have? Calculate the difference between the two totals for every team.
 
 ```{r}
-
 umdgames <- matches_2024 |>
   filter(team == "Maryland Terrapins, Terps")
 umdcorners <- umdgames |>
@@ -161,11 +160,15 @@ lehighsummary
 ausummary
 stbsummary
 navysummary
-
-
 ```
-'''{r}
-matches_2024 |> 
-  filter(corners >= 9, defensive_corners =< 1, outcome == loss)
+
+Null Hypothesis, No Signficant Difference in goals 2023 vs 2024
+```{r}
+gmatches2023 <- matches_2023 |> mutate(Total_Goals = goals+defensive_goals) #|> filter(date < '2023-09-12')
+gmatches2024 <- matches_2024 |> mutate(Total_Goals = goals+defensive_goals)
+
+result <- t.test(gmatches2023$Total_Goals, gmatches2024$Total_Goals, alternative = "two.sided", var.equal = TRUE)
+print(result)
+```
 
 
