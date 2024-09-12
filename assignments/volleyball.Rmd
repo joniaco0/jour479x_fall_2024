@@ -1,20 +1,52 @@
 ```{r}
 library(tidyverse)
+library(shiny)
 ```
 
 Here's an example of how to calculate z-scores using NCAA volleyball teams. We'll use match data for the 2023 season.
 
 ```{r}
-matches <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensVolleyballData/main/data/ncaa_womens_volleyball_matchstats_2023.csv")
+matches23 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensVolleyballData/main/data/ncaa_womens_volleyball_matchstats_2023.csv")
+matches24 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensVolleyballData/main/data/ncaa_womens_volleyball_matchstats_2024.csv")
 ```
-
-### Isolate the columns we might want to use for our metrics
 
 ```{r}
-teamquality <- matches |> 
-  select(team, kills, s, errors, total_attacks, assists, s_err, digs, ret_att, r_err, b_err)
+matches23|> filter(team == "Maryland Terrapins, Terps")|>
+group_by(result) |>
+  summarize(
+    avg_aces = mean(aces)
+  )
+matches24|> filter(team == "Maryland Terrapins, Terps") |>
+group_by(result) |>
+  summarize(
+    avg_aces = mean(aces)
+  )
+```
+T-test 
+Null Hypothesis: There is no difference between the two years
+
+```{r}
+umd_aces23 <- matches23 |> filter(team== "Maryland Terrapins, Terps") |> mutate(season=2023) #|> filter(date >02)
+umd_aces24 <- matches24 |> filter(team== "Maryland Terrapins, Terps") |> mutate(season=2024)
+
+result <- t.test(umd_aces23$aces, umd_aces24$aces, alternative = "two.sided", var.equal = TRUE)
+
+print(result)
 ```
 
+
+
+```{r}
+combined <- bind_rows(umd_aces23,umd_aces24)
+
+combined$result <- factor(combined$result)
+combined$season <- factor(combined$season)
+
+anova_result <- aov(aces ~ result * season, data = combined)
+
+summary(anova_result)
+
+```
 
 ### Calculate averages
 
