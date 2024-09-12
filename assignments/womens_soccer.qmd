@@ -170,5 +170,5 @@ gmatches2024 <- matches_2024 |> mutate(Total_Goals = goals+defensive_goals)
 result <- t.test(gmatches2023$Total_Goals, gmatches2024$Total_Goals, alternative = "two.sided", var.equal = TRUE)
 print(result)
 ```
-
+In the first games of 2024, the scoring output is much higher than most of 2023. However, when filtering to the first games of 2023, the average is about the same. 
 
