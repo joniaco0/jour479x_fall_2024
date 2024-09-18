@@ -172,3 +172,31 @@ print(result)
 ```
 In the first games of 2024, the scoring output is much higher than most of 2023. However, when filtering to the first games of 2023, the average is about the same. 
 
+#Correlations
+```{r}
+correlations <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensSoccerData/main/data/ncaa_womens_soccer_matchstats_2024.csv")
+newcorrelations <- correlations |> 
+  mutate(
+    differential = goals - defensive_goals
+    )
+newcorrelations |> summarise(correlation = cor(differential, yellow_cards, method="pearson"))
+
+```
+```{r}
+fit <- lm(differential ~ fouls, data = newcorrelations)
+summary(fit)
+```
+
+```{r}
+shotstable <- newcorrelations |> group_by(team) |> summarize(Shots = sum(sh_att),wins = sum(outcome == "Win"),
+    losses = sum(outcome == "Loss")) |> arrange(desc(Shots))
+umdshots <- shotstable |> mutate(row_id = row_number())
+umdshots <- umdshots |> filter(team == 'Maryland Terrapins, Terps')
+shotstable
+umdshots
+newcorrelations |> 
+  summarise(correlation = cor(differential, so_g, method="pearson"))
+net <- lm(goals ~ sh_att, data = newcorrelations)
+summary(net)
+```
+Maryland is one of the worst teams in the nation in generating shots, ranking 208 of 337 in the nation. While the best teams in the nation don't need to generate a lot of shots to win, but if Maryland wants to improve it's low scoring offense they will need to generate more shot opportunities. 

@@ -45,3 +45,23 @@ Some of these clearly are influenced by performance on the field. Below, describ
 
 **ANSWER**
 A pretty intresting finding was UNLV's increase in attendance. UNLV's full name is the University of Nevada Las Vegas, and has a stadium on campus that is renovated but chose to move to Allegiant Stadium in 2020. This is the biggest change from 2019 to 2023 with the only difference being UNLV being good in Mountain West play in 2023. So this move could have the numbers to show that it was a good choice.
+```{r}
+B <- read.csv("https://dwillis.github.io/sports-data-files/big_ten_no_2020.csv")
+```
+
+
+```{r}
+big_ten_avg <- B |>
+  group_by(Institution) |>
+  summarize(
+    avg_attendance = mean(Attendance) ,
+    avg_wins = mean(Wins),
+    sd_attendance = sd(Attendance),
+    sd_wins = sd(Wins)
+  ) |>
+  arrange(desc(sd_wins))
+
+big_ten_avg
+
+```
+Nebraska's fanbase continues to pack crowds despite averaging under six wins a season. They rank fourth in the Big Ten in attendance despite Wisconsin finishing with over 4 wins a season more than Nebraska. Same situation with Iowa. It's not like these other programs dont have impressive attendance numbers either. 
