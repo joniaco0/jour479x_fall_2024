@@ -6,12 +6,17 @@ if (!requireNamespace('pacman', quietly = TRUE)){
 pacman::p_load_current_gh("sportsdataverse/cfbfastR", dependencies = TRUE, update = TRUE)
 install.packages("cfbfastR")
 library(tidyverse)
-library(cfbfastR)
+
 ```
 
+```{r}
+library(cfbfastR)
+library(tidyverse)
+```
 
 ```{r}
 plays_2023 <- cfbd_pbp_data(2023)
+View(plays_2023)
 ```
 
 First-play problems: it appears that teams are inconsistent about how they define the first play. Many use the kickoff as the first play, while some do not.
@@ -19,3 +24,42 @@ First-play problems: it appears that teams are inconsistent about how they defin
 ```{r}
 plays_2023 |> filter(drive_number == 1, play_number == 1, play_type != 'Kickoff') |> distinct(home, play_type)
 ```
+```{r}
+logs <- read.csv("https://dwillis.github.io/sports-data-files/footballlogs1123.csv")
+```
+
+```{r}
+difflogs <- logs|> mutate(Differential = TeamScore - OpponentScore)
+```
+```{r}
+difflogs |> summarize(correlation = cor(Differential, Penalties, method="pearson"))
+fit <- lm(Differential ~ Penalties, data = difflogs)
+summary(fit)
+```
+#Regression of Penalties and Differential
+The P-value is small enough to make the relation statistically significant, but the negative relationship is not very strong, -0.01920379	and an R^2 value of 0.0003688 is a very small relationship
+```{r}
+View(difflogs)
+multilogs <- difflogs|> mutate(MissedPasses = PassingAtt - PassingCmp)
+```
+```{r}
+```
+
+```{r}
+multilogs |> summarize((correlation = cor(Differential,Penalties+TotalTurnovers+MissedPasses, method="pearson")))
+View(multilogs)
+```
+```{r}
+fit <- lm(Differential ~ Penalties+TotalTurnovers+MissedPasses, data = multilogs)
+summary(fit)
+```
+```{r}
+closelogs <- multilogs|> filter(Differential <= 8 & Differential >= -8)
+closelogs |> summarize((correlation = cor(Differential,Penalties+TotalTurnovers+MissedPasses, method="pearson")))
+fit <- lm(Differential ~ Penalties+TotalTurnovers+MissedPasses, data = closelogs)
+summary(fit)
+```
+A one-score game is a game in which the defict can be made up in one possession, the max is a TD + 2pt conversion so a close game would be less than or equal to 8 points and Greater than or equal to -8 points in score differential. With the full sample of games having a  0.2407  R squared and the adjusted having 0.1138 R squared, the relationships are both statstically signifcant, but not strong, and becomes weaker with the close game cut off. 
+
+Summary:
+From what the numbers show, Penalties are not a good indicator of game results, which means a story probably isn't needed, but looking at other detrimental plays such as Turnovers, Missed Passes and other variables, there is a better path to a more accuate mode. For penalties, I would not add this into a story. 

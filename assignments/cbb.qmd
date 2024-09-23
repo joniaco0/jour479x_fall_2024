@@ -4,7 +4,7 @@ library(Hmisc)
 ```
 
 ```{r}
-logs <- read_csv("https://dwillis.github.io/sports-data-files/cbblogs1523.csv")
+logs <- read_csv("https://dwillis.github.io/sports-data-files/cbblogs1524.csv")
 ```
 ```{r}
 logs <- logs |> mutate(
@@ -33,7 +33,7 @@ summary(model2)
 ```
 ```{r}
 logs |> 
-  filter(Team == "Michigan" & Season == '2020-2021' | Team == "Wisconsin" & Season == '2019-2020' | Team == "Michigan State" & Season == '2018-2019' | Team == "Michigan State" & Season == '2017-2018' | Team == 'Illinois' & Season == '2021-2022' | Team == 'Purdue' & Season == '2022-2023') |> 
+  filter(Team == "Michigan" & Season == '2020-2021' | Team == "Wisconsin" & Season == '2019-2020' | Team == "Michigan State" & Season == '2018-2019' | Team == "Michigan State" & Season == '2017-2018' | Team == 'Illinois' & Season == '2021-2022' | Team == 'Purdue' & Season == '2022-2023'| Team == 'Purdue' & Season == '2023-2024') |>
   summarise(
     meanNetRebounds = mean(NetRebounds),
     meanTurnoverMargin = mean(TurnoverMargin),
@@ -44,7 +44,7 @@ logs |>
 
 ```{r}
 # (netrebounds estimate * meanNetRebounds) + (turnover margin estimate * meanTurnoverMargin) + (TeamFGPCT estimate * meanTeamFGPCT) + (OpponentFGPCT estimate * meanOpponentFGPCT) + Intercept
-(0.654800*6.05) + (-1.310579*0.6333333) + (90.805990*0.4543167) + (-91.351310*0.4107167) + 0.287665
+(0.654800*9.606796) + (-1.310579*1.966019) + (90.805990*0.4772621) + (-91.351310*0.398272) + 0.287665
 ```
 
 ```{r}
