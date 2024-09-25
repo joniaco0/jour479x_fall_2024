@@ -1,0 +1,28 @@
+```{r}
+install.packages("nflfastR")
+install.packages("nflfastR", repos = c("https://nflverse.r-universe.dev", getOption("repos")))
+```
+```{r}
+library(tidyverse)
+library(nflfastR)
+
+```
+
+```{r}
+pbp_2022 <- `play_by_play_2022 (4)`
+View(pbp_2022)
+```
+
+```{r}
+FirstGames <- pbp_2022 |> filter(week < 4, game_half == 'Half2', play_type == 'pass', posteam == 'WAS',  receiver == 'T.McLaurin')
+View(FirstGames)
+```
+
+```{r}
+pbp_2024 <- read_rds('https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2024.rds')
+```
+```{r}
+FirstGames24 <- pbp_2024 |> filter(week < 4, game_half == 'Half2', play_type == 'pass', posteam == 'WAS',  receiver == 'T.McLaurin')
+View(FirstGames24)
+```
+These numbers yield simliar results of target share, with McLaurin not getting much first half targets compared to the rest of the league. However, when looking at Second Half targets, McLaurin had nearly double, and produced more in both years in the second half. In fact, the 2022 numbers yielded more plays of 10 yards or more in the second half than 2024. 
