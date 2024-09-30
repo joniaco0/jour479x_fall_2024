@@ -11,16 +11,7 @@ matches24 <- read_csv("https://raw.githubusercontent.com/dwillis/NCAAWomensVolle
 ```
 
 ```{r}
-matches23|> filter(team == "Maryland Terrapins, Terps")|>
-group_by(result) |>
-  summarize(
-    avg_aces = mean(aces)
-  )
-matches24|> filter(team == "Maryland Terrapins, Terps") |>
-group_by(result) |>
-  summarize(
-    avg_aces = mean(aces)
-  )
+View(matches24)
 ```
 T-test 
 Null Hypothesis: There is no difference between the two years
@@ -51,7 +42,7 @@ summary(anova_result)
 ### Calculate averages
 
 ```{r}
-teamtotals <- teamquality |> 
+teamtotals <- matches24 |> 
   group_by(team) |> 
   summarise(
     avg_kills = mean(kills),
@@ -62,7 +53,9 @@ teamtotals <- teamquality |>
     avg_digs = mean(digs),
     avg_ret_att = mean(ret_att),
     avg_r_err = mean(r_err),
-    avg_b_err = mean(b_err)
+    avg_b_err = mean(b_err),
+    avg_aces = mean(aces),
+    avg_hitpct = mean(hit_pct)
   )
 ```
 
@@ -73,15 +66,25 @@ teamzscore <- teamtotals |>
   mutate(
     kills_zscore = as.numeric(scale(avg_kills, center = TRUE, scale = TRUE)),
     errors_zscore = as.numeric(scale(avg_errors, center = TRUE, scale = TRUE)) * -1,
-    s_err_zscore = as.numeric(scale(avg_s_err, center = TRUE, scale = TRUE)) * -1,
+    hitpct_zscore = as.numeric(scale(avg_hitpct, center = TRUE, scale = TRUE)),
     digs_zscore = as.numeric(scale(avg_digs, center = TRUE, scale = TRUE)),
-    TotalZscore = kills_zscore + errors_zscore + s_err_zscore + digs_zscore
-  )
+    TotalZscore = kills_zscore + errors_zscore + hitpct_zscore +  digs_zscore
+  )|>
+arrange(desc(teamzscore))
+
 ```
 
 ### Look at the results
 
 ```{r}
-teamzscore |> select(team, TotalZscore, kills_zscore, errors_zscore, s_err_zscore, digs_zscore) |>  arrange(desc(TotalZscore))
+teamzscore |> select(team, TotalZscore, kills_zscore, errors_zscore, hitpct_zscore, digs_zscore) |>  arrange(desc(TotalZscore))
 ```
+```{r}
+umdzscore <- teamzscore |> filter(team  == "Maryland Terrapins, Terps")
+View(teamzscore)
+umdzscore
+
+```
+Maryland ranks 51st in my z-score metric, which takes into account, Errors, Hitting Pct, Digs and Kills. This ranks right below former national champion Texas, but outside the top 50.
+At the top of the list is Kansas, ranked #9 in the most recent poll, followed by 7 Wisconsin and Wofford. The #1 Ranked Pitt Panthers don't make the top 10 with poor Digs metrics. This could mean Digs are not very worth it, but my model looks to account defense (digs), poor offense (errors), offense (kills) and hitting pct. 
 
