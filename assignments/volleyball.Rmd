@@ -68,7 +68,7 @@ teamzscore <- teamtotals |>
     errors_zscore = as.numeric(scale(avg_errors, center = TRUE, scale = TRUE)) * -1,
     hitpct_zscore = as.numeric(scale(avg_hitpct, center = TRUE, scale = TRUE)),
     digs_zscore = as.numeric(scale(avg_digs, center = TRUE, scale = TRUE)),
-    TotalZscore = kills_zscore + errors_zscore + hitpct_zscore +  digs_zscore
+    TotalZscore = kills_zscore + errors_zscore + hitpct_zscore
   )|>
 arrange(desc(teamzscore))
 
@@ -77,7 +77,7 @@ arrange(desc(teamzscore))
 ### Look at the results
 
 ```{r}
-teamzscore |> select(team, TotalZscore, kills_zscore, errors_zscore, hitpct_zscore, digs_zscore) |>  arrange(desc(TotalZscore))
+teamzscore |> select(team, TotalZscore, kills_zscore, errors_zscore, hitpct_zscore) |>  arrange(desc(TotalZscore))
 ```
 ```{r}
 umdzscore <- teamzscore |> filter(team  == "Maryland Terrapins, Terps")
@@ -88,3 +88,14 @@ umdzscore
 Maryland ranks 51st in my z-score metric, which takes into account, Errors, Hitting Pct, Digs and Kills. This ranks right below former national champion Texas, but outside the top 50.
 At the top of the list is Kansas, ranked #9 in the most recent poll, followed by 7 Wisconsin and Wofford. The #1 Ranked Pitt Panthers don't make the top 10 with poor Digs metrics. This could mean Digs are not very worth it, but my model looks to account defense (digs), poor offense (errors), offense (kills) and hitting pct. 
 
+```{r}
+teamzscore |> select(team, avg_kills, avg_aces, avg_hitpct,avg_errors ) |>  arrange(avg_errors)
+```
+
+
+#Story
+With Texas' exodus of the Big 12 in 2024, the conference has a void to fill as a champion, the Kansas Jayhawks are in prime position to take charge as they enter conference play. Since 2011, Texas has won 11 conference championships, splitting it in 2019 with Baylor, and won by Kansas in 2016. But since Nebraska left the conference, no team has been able to compete with the defending national champions consistently. 
+
+But with the Longhorns off to the SEC, the Jayhawks have set themselves in prime position not only to win the conference, but be a national title contender. Through 12 games, Kansas is 11-1, with wins over formerly No. 24 Marquette and No. 6 Purdue. They are also second in the nation in average Hitting Percentage and second last in the nation in committing errors. 
+
+But with the exit of Texas comes newcomers and old foes that pose a threat to the Jayhawks's goals. Utah is currently tied at the top of the standings at 12-1 and one of the best teams in the nation at avoiding errors. Baylor is ranked No. 14 and Arizona State is ranked No. 15, both with solid wins on their resume. 
