@@ -44,13 +44,13 @@ logs |>
 
 ```{r}
 # (netrebounds estimate * meanNetRebounds) + (turnover margin estimate * meanTurnoverMargin) + (TeamFGPCT estimate * meanTeamFGPCT) + (OpponentFGPCT estimate * meanOpponentFGPCT) + Intercept
-(0.654800*9.606796) + (-1.310579*1.966019) + (90.805990*0.4772621) + (-91.351310*0.398272) + 0.287665
+(0.654800*9.606796) + (-1.311144*1.966019) + (91.270480*0.4772621) + (-91.510307*0.398272) + 0.226590
 ```
 
 ```{r}
 logs |> 
   filter(
-    Team == "Maryland" & Season == '2022-2023'
+    Team == "Maryland" & Season == '2023-2024'
     ) |> 
   summarise(
     meanNetRebounds = mean(NetRebounds),
@@ -60,13 +60,90 @@ logs |>
   )
 ```
 ```{r}
-(0.654800*1.685714) + (-1.310579*0.9142857) + (90.805990*0.4517714) + (-91.351310*0.428) + 0.287665
+(0.654800*1.272727) + (-1.311144*-0.3939394) + (91.270480*0.413697) + (-91.510307*0.419) + 0.226590
 ```
 
 ```{r}
 logs |> 
      filter(
-         Team == "Maryland" & Season == '2022-2023'
+         Team == "Maryland" & Season == '2023-2024'
      ) |> summarise(avg_score = mean(TeamScore), avg_opp = mean(OpponentScore))
+```
+#Residuals
+```{r}
+library(tidyverse)
+
+```
+```{r}
+logs <- cbblogs1524
+```
+
+```{r}
+residualmodel <- logs |> mutate(differential = TeamScore - OpponentScore, FGPctMargin = TeamFGPCT - OpponentFGPCT)
+fit <- lm(differential ~ FGPctMargin, data = residualmodel)
+summary(fit)
+```
+```{r}
+residualmodel <- residualmodel |> filter(!is.na(FGPctMargin))
+residualmodel <- residualmodel |> mutate(predicted = predict(fit), residuals = residuals(fit))
+residualmodel
+```
+```{r}
+residualmodel |> filter(Conference == 'Big Ten') |> arrange(desc(residuals)) |> select(Date, Team, Opponent, W_L, differential, FGPctMargin, predicted, residuals)
+```
+```{r}
+library(tidyverse)
+library(cluster)
+
+set.seed(1234)
+players <- read_csv("https://dwillis.github.io/sports-data-files/players20.csv")
+```
+```{r}
+playersselected <- players |>
+  filter(MP>0) |> filter(Pos == "F") |>
+  select(Player, Team, Pos, MP, `FG%`, TRB, BLK, TOV, PTS) |>
+  na.omit()
+```
+```{r}
+playersscaled <- playersselected |>
+  select(MP, `FG%`, TRB, BLK, TOV, PTS) |>
+  mutate_all(scale) |>
+  na.omit()
+```
+```{r}
+# function to compute total within-cluster sum of square
+wss <- function(k) {
+  kmeans(playersscaled, k, nstart = 10 )$tot.withinss
+}
+
+# Compute and plot wss for k = 1 to k = 15
+k.values <- 1:15
+
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k.values, wss)
+
+plot(k.values, wss_values,
+       type="b", pch = 19, frame = FALSE,
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+```
+```{r}
+k8 <- kmeans(playersscaled, centers = 8, nstart = 25)
+k8
+```
+```{r}
+playercluster <- data.frame(playersselected, k8$cluster)
+```
+
+```{r}
+cm <- playercluster |> filter(Player == "Jalen Smith")
+
+cm
+```
+
+```{r}
+ggplot() +
+  geom_point(data=playercluster, aes(x=MP, y=TRB, color=k8.cluster)) +
+  geom_point(data=cm, aes(x=MP, y=TRB), color="red")
 ```
 

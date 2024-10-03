@@ -65,3 +65,111 @@ big_ten_avg
 
 ```
 Nebraska's fanbase continues to pack crowds despite averaging under six wins a season. They rank fourth in the Big Ten in attendance despite Wisconsin finishing with over 4 wins a season more than Nebraska. Same situation with Iowa. It's not like these other programs dont have impressive attendance numbers either. 
+```{r}
+library(tidyverse)
+attendance <- read_csv('https://dwillis.github.io/sports-data-files/attendance.csv')
+```
+```{r}
+attendance |> 
+  arrange(desc(`2023`)) |> 
+  top_n(10) |> 
+  select(Institution, `2023`)
+```
+```{r}
+top10 <- attendance |>
+  arrange(desc(`2023`)) |> 
+  top_n(10) |> 
+  select(Institution, `2023`)
+```
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(x=Institution)
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(x=Institution, weight=`2023`)
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(
+      x=reorder(Institution, `2023`), 
+      weight=`2023`
+      )
+    )
+```
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(
+      x=reorder(Institution, -`2023`), 
+      weight=`2023`
+      )
+    )
+```
+
+```{r}
+library(scales)
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(
+      x=reorder(Institution, -`2023`), 
+      weight=`2023`
+      )
+    ) + 
+  scale_y_continuous(labels=comma)
+```
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(
+      x=reorder(Institution, -`2023`), 
+      weight=`2023`)
+    ) + 
+  scale_y_continuous(labels=comma) + 
+  labs(
+    title="Top 10 Football Programs By Attendance", 
+    x="School", 
+    y="Attendance"
+)
+```
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(x=reorder(Institution, -`2023`),
+        weight=`2023`)) + 
+  scale_y_continuous(labels=comma) + 
+  labs(
+    title="Top 10 Football Programs By Attendance", 
+    x="School", 
+    y="Attendance") + 
+  theme_light()
+```
+```{r}
+ggplot() + 
+  geom_bar(
+    data=top10, 
+    aes(x=reorder(Institution, -`2023`),
+        weight=`2023`)) + 
+  scale_y_continuous(labels=comma) + 
+  labs(
+    title="Top 10 Football Programs By Attendance", 
+    x="School", 
+    y="Attendance") + 
+  theme_minimal() + 
+  coord_flip()
+```
+

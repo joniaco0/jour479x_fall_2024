@@ -34,5 +34,22 @@ teamzscore <- teamtotals |>
     OppRebZScore = as.numeric(scale(OffRebAvg, center = TRUE, scale = TRUE)) * -1,
     TotalZscore = FGzscore + RebZscore + OppZscore + OppRebZScore
   )  
+teamzscore
+```
+```{r}
+teamzscore |> arrange(desc(TotalZscore))
+```
+```{r}
+teamzscore |> 
+  filter(Conference == "Big Ten WBB") |> 
+  arrange(desc(TotalZscore)) |>
+  select(Team, TotalZscore)
+```
+```{r}
+powerfive_plus_one <- c("SEC WBB", "Big Ten WBB", "Pac-12 WBB", "Big 12 WBB", "ACC WBB", "Big East WBB")
+teamzscore |> 
+  filter(Conference %in% powerfive_plus_one) |> 
+  arrange(desc(TotalZscore)) |>
+  select(Team, TotalZscore)
 ```
 
