@@ -33,7 +33,7 @@ Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN",
 filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
 
 ```
-The main statstic I will be using is Wins Above Replacement, or WAR. This is an estimate of how many wins a player is fworth over a replacement level player. It has a very convluteted measurement, but for the sake of this presentation, I'm taking it at face value for wins. 
+The main statstic I will be using is Wins Above Replacement, or WAR. This is an estimate of how many wins a player is worth over a replacement level player. It has a very convluteted measurement, but for the sake of this presentation, I'm taking it at face value for wins. 
 
 Here is a table of Games Played and fangraphs wins above replacement (FWAR) accumulated, and arranged by WAR divided by Games played. This is a preliminary idea of what we're looking at. Barry Bonds' 2004 season is well regarded as one of the best of all time. By looking at this stat, in 147 games, he was on pace for over 12 Wins above replacement. WAR/G also appreciates players who had injuries at some point, such as 2018 Mookie Betts or 2018 Mike Trout, both who missed over 20 games and not at the Top in the fWAR department, but high in the ratio to WAR to Games played.
 ```{r}
@@ -123,3 +123,7 @@ So we know about Mike Trout, but what about players in that left hand quadrant o
 combined |> filter(Team_Wins <= 60, WAR >= 5)
 ```
 Only Six guys show up, all players who would go on to be All-Stars at some point in their career on terrible teams. Cedric Mullins' 6 WAR is impressive, but his 11% WAR share
+
+
+
+I want a bigger sample, but it does take a lot to load in this data. I also want to test out pitchers soon.
