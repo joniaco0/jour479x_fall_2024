@@ -8,10 +8,17 @@ pacman::p_load_current_gh("BillPetti/baseballr")
 
 ```
 ```{r}
+
+install.packages("mlbstatsR")
+```
+
+```{r}
 library(baseballr)
 library(dplyr)
 library(tidyverse)
 library(readr)
+library(formattable)
+
 
 ```
 ```{r}
@@ -22,55 +29,97 @@ View(batting_data)
 ```
 This is all qualified batters from 2004 to 2024, there are a couple problems with this set. Some players have played on two teams. I want only players that stuck out the whole season. So I'm filtering for only players that have these teams. 
 ```{r}
-Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN", "CIN", "PIT", "MIA", "LAA", "COL", "CHW")
-batting_data |> filter(Team %in% Teams)
+Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA")
+filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
+
 ```
+The main statstic I will be using is Wins Above Replacement, or WAR. This is an estimate of how many wins a player is worth over a replacement level player. It has a very convluteted measurement, but for the sake of this presentation, I'm taking it at face value for wins. 
+
+Here is a table of Games Played and fangraphs wins above replacement (FWAR) accumulated, and arranged by WAR divided by Games played. This is a preliminary idea of what we're looking at. Barry Bonds' 2004 season is well regarded as one of the best of all time. By looking at this stat, in 147 games, he was on pace for over 12 Wins above replacement. WAR/G also appreciates players who had injuries at some point, such as 2018 Mookie Betts or 2018 Mike Trout, both who missed over 20 games and not at the Top in the fWAR department, but high in the ratio to WAR to Games played.
+```{r}
+filtered |> select(Season,Name,Team,G,WAR) |> mutate(WAR/G) |> arrange(desc(WAR/G))
+```
+The idea is to create a metric, divding it by the WAR of each player with the wins of the team they were from, there are other ways to find production, like looking at wRC+ for offensive production or Defensive Runs Saved or defensive grade for defense, but for now, WAR/Wins is the start.
+
+WAR/Wins, or WARSHARE is a metric that takes the total acculmated WAR in a season and divides it by the amount of wins a team had in a given season. So if a player has 10 WAR, and the team wins 100 Games, the WARSHARE is 0.10, or 10%. fWAR is not a perfect statistic, but it is a good baseline to see who is most valuable. 
+
+First you need to load in the Wins from each team from 2004 to 2024, this is downloaded on my computer as of now and I will find a way to make this readily available.
+Then you Bind together the Season from the standings, and the Team. Both tables have these values so binding it makes it easy.
+
+```{r}
+standings <- read_csv("C:/desktop/jour479x_fall_2024/standings.csv")
+View(Standings)
+merged_data <- merge(filtered, standings, by = c("Season", "Team"), all.x = TRUE)
+
+# Rename the Wins column if needed
+colnames(merged_data)[colnames(merged_data) == "W"] <- "Team_Wins"
+View(standings)
+
+```
+With this data we want the Season, Name, Team, Games Played, Team Wins and add WAR/Team Wins. I also want to add an inqury of players with over 10% of their teams wins according to WAR and put a parameter on them to highlight this later. 
+
+```{r}
+combined <- merged_data |> select(Season,Name,Team,G,WAR,Team_Wins) |> mutate(WARSHARE = WAR/Team_Wins, Highlight = ifelse(WARSHARE > 0.10, "High", "Low")) |> arrange(desc(WARSHARE))
+combined
+```
+Here is a scatterplot of the data, showing Team Wins over WAR. There are a couple of standouts. 
+```{r}
+ggplot(data = combined, aes(x = Team_Wins, y = WAR)) +
+  geom_point(size = 1) +  # Points for all players, adjust size as needed
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+   geom_point(aes(color = Highlight)) +
+  
+  labs(x = "Team Wins", y = "WAR") +
+  theme_minimal() +
+  theme(legend.title = element_blank())  # Remove legend title if desired
+
+
+```
+Notice the trendline in the scatterplot. In this over 2,800 player sample, if your team is under 60 wins you most likely will be around a 2 WAR player. If your team has over 100 Wins, you most likely will be a 4 WAR player. 
+```{r}
+Over10 <- combined |> filter(Highlight == "High")
+Over10 |> group_by(Name) |> summarize(Count = n()) |> arrange(desc(Count))
+```
+Since 2004, a player has made up over 10% WAR ShareR 27 times. Mike Trout himself has done it six times. 
+```{r}
+ggplot(data = combined, aes(x = Team_Wins, y = WAR)) +
+  geom_point(size = 1) +  # Points for all players, adjust size as needed
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+   geom_point(aes(color = Highlight)) +
+  geom_point(data = subset(combined, Name == "Mike Trout"), aes(color = "Mike Trout"), size = 2) +  # Highlight Mike Trout
+  labs(x = "Team Wins", y = "WAR") +
+  theme_minimal() +
+  theme(legend.title = element_blank())  # Remove legend title if desired
+
+```
+The gap between Mike Trout and the rest of the MLB in this sample is truly remarkable. For Zscores of this metric, Trout is far and beyond the best player in this sample.
+```{r}
+# Calculate z-scores
+zscores <- combined %>%
+  mutate(zscore = as.numeric(scale(WAR / Team_Wins, center = TRUE, scale = TRUE)))
+zscores
+```
+This sample is all qualified batters, so players who would be eligible for awards based on play time. Some players seasons are missing from this sample due to the fact they missed too much time. This would also draw the WAR average down, WAR is a culmuative stat, so if you are an above replacement level player, it goes up the more you play games. 
+
+
 ```{r}
 
 
+combined |> group_by(Name) |> summarize(Total = mean(WAR/Team_Wins)*100,Seasons = n()) |> arrange(desc(Seasons))
 
 ```
+Adding one more parameter to this statistic. Because qualified batters is based on plate appereances, they are able to miss some games and still be considered qualified. Well do players who produce at a high rate but missed some games maybe get boosted if we try to account for missed time? 
 ```{r}
-library(baseballr)
-library(dplyr)
-
-# Create an empty dataframe to store the standings for all years and divisions
-all_standings <- data.frame()
-
-# Loop over each year from 2004 to 2024
-for (year in 2004:2023) {
-  # Convert the year to a string and create the date (assuming October 1st as the end of the season)
-  date_str <- paste0(year, "-10-01")
-  
-  # Get AL standings for the year
-  al_standings <- bref_standings_on_date(date = date_str, division = "AL Overall")
-  
-  # Get NL standings for the year
-  nl_standings <- bref_standings_on_date(date = date_str, division = "NL Overall")
-  
-  # Add a column to identify the league (AL or NL)
-  al_standings$League <- "AL"
-  nl_standings$League <- "NL"
-  
-  # Add a column specifying the season for each team (e.g., 2004, 2005, etc.)
-  al_standings$Season <- year
-  nl_standings$Season <- year
-  
-  # Combine AL and NL standings for the year
-  year_standings <- bind_rows(al_standings, nl_standings)
-  
-  # Append to the overall standings dataframe
-  all_standings <- bind_rows(all_standings, year_standings)
-}
-
-# View the combined standings for all years and leagues, including the season column
-head(all_standings)
-
+combined |> mutate(Adjust = `WAR/Team_Wins`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WAR/Team_Wins`)
 ```
-I am currently trying this function to pull standings data. It needs some tweaking, but the idea is to join both tables. (This was generated by ChatGPT but is getting modfied.)
-
-Here is how the data in the players table will be arranged.
+If we adjust for games missed, in games he played, Mike Trout accounted for over 13% of his team's wins four times. No other player has done it even once.
 ```{r}
-batting_data |> select(Season,Name,Team,G,WAR)
+combined |> mutate(Adjust = `WAR/Team_Wins`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WAR/Team_Wins`) |> arrange(desc(Difference))
 ```
-The idea is to create a metric, divding it by the Wins Above Replacement(WAR) of each player with the wins of the team they were from, there are other ways to find production, like looking at wRC+ for offensive production or Defensive Runs Saved or defensive grade for defense, but for now, WAR/Wins is the start. 
+Finally, look at some of the players who were on huge paces, but missed out on too many games to crack the top of the leader board. Joe Mauer had 5 WAR in 113 games on a team that would go on to win 66 games that year. If he stayed healthy for 162 games, he'd be in a select club of players that were worth over 10% of their wins according to WAR in the past 20 years. Chipper Jones in 2008 missed over 40 games, yet stil was close to 10% of his teams WAR. If he played 162 games, he'd have one of the best seasons in the past 20 years. 
+
+So we know about Mike Trout, but what about players in that left hand quadrant of the scatterplot? Subpar team wins but good performances.Setting the parameters at 5 WAR, a very solid player, and less than 60 wins. 
+```{r}
+combined |> filter(Team_Wins <= 60, WAR >= 5)
+```
+Only Six guys show up, all players who would go on to be All-Stars at some point in their career on terrible teams. Cedric Mullins' 6 WAR is impressive, but his 11% WAR share
