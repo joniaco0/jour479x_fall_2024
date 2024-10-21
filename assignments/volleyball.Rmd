@@ -1,4 +1,5 @@
 ```{r}
+library(ggalt)
 library(tidyverse)
 library(shiny)
 ```
@@ -99,3 +100,26 @@ With Texas' exodus of the Big 12 in 2024, the conference has a void to fill as a
 But with the Longhorns off to the SEC, the Jayhawks have set themselves in prime position not only to win the conference, but be a national title contender. Through 12 games, Kansas is 11-1, with wins over formerly No. 24 Marquette and No. 6 Purdue. They are also second in the nation in average Hitting Percentage and second last in the nation in committing errors. 
 
 But with the exit of Texas comes newcomers and old foes that pose a threat to the Jayhawks's goals. Utah is currently tied at the top of the standings at 12-1 and one of the best teams in the nation at avoiding errors. Baylor is ranked No. 14 and Arizona State is ranked No. 15, both with solid wins on their resume. 
+
+```{r}
+logs <- read_csv("https://dwillis.github.io/sports-data-files/ncaa_womens_volleyball_matchstats_2023.csv")
+big10 <- c("Nebraska Cornhuskers", "Iowa Hawkeyes", "Minnesota Golden Gophers", "Illinois Fighting Illini", "Northwestern Wildcats", "Wisconsin Badgers", "Indiana Hoosiers", "Purdue Boilermakers", "Ohio St.", "Michigan Wolverines", "Michigan St.", "Penn St.", "Rutgers Scarlet Knights", "Maryland Terrapins, Terps")
+```
+```{r}
+
+errors <- logs |>
+  filter(team %in% big10) |> 
+  group_by(team) |> 
+  summarise(
+    total_errors = sum(errors), 
+    opp_errors = sum(defensive_errors))
+```
+
+```{r}
+ggplot() + 
+  geom_dumbbell(
+    data=errors, 
+    aes(y=team, x=total_errors, xend=opp_errors)
+  )
+```
+

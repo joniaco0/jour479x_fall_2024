@@ -23,13 +23,15 @@ library(formattable)
 ```
 ```{r}
 batting_data <- read_csv("C:/desktop/jour479x_fall_2024/JoniacoBaseball - Sheet2.csv")
+
+
 ```
 ```{r}
 View(batting_data)
 ```
 This is all qualified batters from 2004 to 2024, there are a couple problems with this set. Some players have played on two teams. I want only players that stuck out the whole season. So I'm filtering for only players that have these teams. 
 ```{r}
-Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA")
+Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD")
 filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
 
 ```
@@ -47,7 +49,7 @@ First you need to load in the Wins from each team from 2004 to 2024, this is dow
 Then you Bind together the Season from the standings, and the Team. Both tables have these values so binding it makes it easy.
 
 ```{r}
-standings <- read_csv("C:/desktop/jour479x_fall_2024/standings.csv")
+standings <- read_csv("C:/desktop/jour479x_fall_2024/Stand.csv")
 View(Standings)
 merged_data <- merge(filtered, standings, by = c("Season", "Team"), all.x = TRUE)
 
@@ -92,11 +94,11 @@ ggplot(data = combined, aes(x = Team_Wins, y = WAR)) +
   theme(legend.title = element_blank())  # Remove legend title if desired
 
 ```
-The gap between Mike Trout and the rest of the MLB in this sample is truly remarkable. For Zscores of this metric, Trout is far and beyond the best player in this sample.
+The gap between Mike Trout and the rest of the MLB in this sample is truly remarkable, well until you remember 2004 Barry Bonds. But other than those two seasons, nothing is even close to them production wise.
 ```{r}
 # Calculate z-scores
 zscores <- combined %>%
-  mutate(zscore = as.numeric(scale(WAR / Team_Wins, center = TRUE, scale = TRUE)))
+  mutate(zscore = as.numeric(scale(WARSHARE, center = TRUE, scale = TRUE)))
 zscores
 ```
 This sample is all qualified batters, so players who would be eligible for awards based on play time. Some players seasons are missing from this sample due to the fact they missed too much time. This would also draw the WAR average down, WAR is a culmuative stat, so if you are an above replacement level player, it goes up the more you play games. 
@@ -105,25 +107,104 @@ This sample is all qualified batters, so players who would be eligible for award
 ```{r}
 
 
-combined |> group_by(Name) |> summarize(Total = mean(WAR/Team_Wins)*100,Seasons = n()) |> arrange(desc(Seasons))
+combined |> group_by(Name) |> summarize(Total = mean(WARSHARE)*100,Seasons = n()) |> arrange(desc(Seasons))
 
 ```
 Adding one more parameter to this statistic. Because qualified batters is based on plate appereances, they are able to miss some games and still be considered qualified. Well do players who produce at a high rate but missed some games maybe get boosted if we try to account for missed time? 
 ```{r}
-combined |> mutate(Adjust = `WAR/Team_Wins`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WAR/Team_Wins`)
+combined |> mutate(Adjust = `WARSHARE`/(G/162)) |> arrange(desc(Adjust)) 
 ```
-If we adjust for games missed, in games he played, Mike Trout accounted for over 13% of his team's wins four times. No other player has done it even once.
+If we adjust for games missed, in games he played, Mike Trout accounted for over 13% of his team's wins four times. Other than 2004 Barry Bonds, no other player has done that once. 
 ```{r}
-combined |> mutate(Adjust = `WAR/Team_Wins`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WAR/Team_Wins`) |> arrange(desc(Difference))
+combined |> mutate(Adjust = `WARSHARE`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WARSHARE`) |> arrange(desc(Difference))
 ```
 Finally, look at some of the players who were on huge paces, but missed out on too many games to crack the top of the leader board. Joe Mauer had 5 WAR in 113 games on a team that would go on to win 66 games that year. If he stayed healthy for 162 games, he'd be in a select club of players that were worth over 10% of their wins according to WAR in the past 20 years. Chipper Jones in 2008 missed over 40 games, yet stil was close to 10% of his teams WAR. If he played 162 games, he'd have one of the best seasons in the past 20 years. 
 
-So we know about Mike Trout, but what about players in that left hand quadrant of the scatterplot? Subpar team wins but good performances.Setting the parameters at 5 WAR, a very solid player, and less than 60 wins. 
+So we know about Mike Trout, but what about players in that left hand quadrant of the scatterplot? Subpar team wins but good performances.Setting the parameters at 5 WAR, a very solid player, and less than 60 wins, which is really bad. 
 ```{r}
 combined |> filter(Team_Wins <= 60, WAR >= 5)
 ```
-Only Six guys show up, all players who would go on to be All-Stars at some point in their career on terrible teams. Cedric Mullins' 6 WAR is impressive, but his 11% WAR share
+Only Six guys show up, all players who would go on to be All-Stars at some point in their career on terrible teams. Cedric Mullins' 6 WAR is impressive, but his 11% WAR share makes it almost as impressive as some of the MVP season's seen above.
+
+I want to find different types of players. Summarizing our dataset, here's who were looking for. 
+```{r}
+summary(combined)
+```
+I want to seprate players into quartiles from team wins, But for now we'll focus on the last quadrant of players on teams with less than 74 wins. 
+```{r}
+FQ <- combined |> filter(Team_Wins <= 74)
+Med <- combined |> filter(Team_Wins >= 74 & Team_Wins <= 84)
+TQ <- combined |> filter(Team_Wins >= 84 & Team_Wins <= 92)
+Mx <- combined |> filter(Team_Wins >= 92)
+
+```
+```{r}
+summary(FQ)
+```
+A quick summary look, the Mean WAR is 2.2, more than half a game less than the total dataset. 
+What does the average WAR look like for good teams vs. bad teams? Working off the quadrants shown from the combined dataset, the first quadrant are players on teams with less than 74 wins, where as the last quadrant are players on teams above 92 wins. How do these compare? Here's a boxplot to show the averages and the outliers. 
+```{r}
+library(ggplot2)
+
+data_long <- data.frame(
+  WAR = c(FQ$WAR, Mx$WAR),  # Combining FQ$WAR and Mx$WAR
+  Dataset = factor(c(rep("Under 74 Wins", length(Mx$WAR)), rep("Over 92 Wins", length(FQ$WAR))))
+)
+
+# Create the boxplot
+ggplot(data_long, aes(x = Dataset, y = WAR, fill = Dataset)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of First Quartile vs Fourth Quartile Team Wins in 20 Years", 
+       x = "Dataset", y = "WAR") +
+  theme_minimal()
 
 
 
-I want a bigger sample, but it does take a lot to load in this data. I also want to test out pitchers soon.
+```
+Simliar to the line chart, the median WAR of players who are on teams with less than 74 wins is less than the first quartile of players on teams with over 92 wins. This seems obvious, but it puts into perspective our outlier group at the top of the graph. 
+```{r}
+FQ |> arrange(desc(WARSHARE))
+```
+Looking at this table we see familiar names like Mike Trout, Cedric Mullins. But what about players that aren't All-Star caliber but are good? The third quartile of players under 74 wins is around 3.4 WAR, round up to 4WAR and lets see who remains.
+
+```{r}
+SweetSpot <- FQ |> filter(WAR <= 4 & WAR >= 2.2) |> arrange(desc(WAR))
+SweetSpot
+```
+At this point in the sample, most players have simliar WARs and WARSHARES. The parameters of this data is between a 2 and 4 WAR and a team under 74 wins. But there's still around 217 players who fit this criteria. At the top is David DeJesus, who stands out of this sample by missing 40 games and being over 7% of his teams wins in WARSHARE. 
+```{r}
+combined |> filter(Name == "David DeJesus")
+```
+Not shown is DeJesus' rookie year, where he finished 6th in Rookie of the Year voting in 2004. His 2005 season was a successful sophmore season, where it looked like he was a future All-Star for the Royals. Looking at his career Trajectory, DeJesus had 7 qualified seasons, all on teams with 75 wins or less. His tragetory peaked in his second season, where he had 4.2 WAR in 119 games, a pretty impressive feat. It took DeJesus 8 years before he got to a team with over 80 wins, but by then, his production wasn't there. 
+```{r}
+library(ggplot2)
+dejesus_data <- combined |> 
+  filter(Name == "David DeJesus") 
+ggplot(dejesus_data, aes(x = Season, y = WAR)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +  # Optional: add points to highlight individual seasons
+  labs(title = "David DeJesus Qualified Seasons", 
+       x = "Season", y = "WAR") +
+  theme_minimal()
+
+```
+I want to do this for other players, but this is the base formatting. 
+
+```{r}
+ss <- SweetSpot |> select(Name)
+names <- data.frame(ss)
+combined |> filter(filter(Name %in% names$Name)) |> group_by(Name)
+```
+
+```{r}
+combined |> 
+ # Filter batting_data for only players in filtered_names
+  group_by(Name) |>  # Group by player name
+  summarize(Total_WAR = sum(WAR, na.rm = TRUE), Total_Team_Wins = sum(Team_Wins,na.rm = TRUE), TotalWARSHARE = Total_WAR/Total_Team_Wins)|>  # Summarize total WAR for each player
+  arrange(desc(TotalWARSHARE))  # Arrange by descending WAR
+
+# View the result
+filtered_total_war
+
+```
+
