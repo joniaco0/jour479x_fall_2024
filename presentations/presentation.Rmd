@@ -136,6 +136,7 @@ ggplot(comp, aes(x = Seasons_Since, y = totalWAR, group = Name)) +
 ```
 Finally, the answer to this question is most exemplified by Joey Votto. While he hasn't always been on a team that is sub 74 wins, he's only been to the playoffs once in a lengthy career. He has steadly been racking up seasons that put him in the Hall of Fame conversation. Votto fits the bill of this inquiry perfectly, he's only been to the playoffs once in his career, and he's racked up WAR an impressive but steady pace. My favorite part about this is the sharp up tick at the end of the year by year graph. After declining for a couple years, Votto had a very solid 2021 that rivaled some of his previous years.
 ```{r}
+
 ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
   geom_line(color = "gray") +
   geom_line(data=votto,aes (x=  Seasons_Since, y = WAR, group = Name), color = "red", size = 1.5) +
@@ -144,6 +145,22 @@ ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
        y = "TotalWAR") +
   theme_minimal()
 ```
+```{r}
+votto_under_80 <- votto |> 
+  filter(Team_Wins < 80)
+ggplot(data = comp, aes(x = Seasons_Since, y = totalWAR, group = Name)) +
+  geom_line(color = "gray") +  
+  geom_line(data = votto, aes(x = Seasons_Since, y = totalWAR), color = "pink", size = 1.5) +  
+    geom_point(data = votto_under_80, aes(x = Seasons_Since, y = totalWAR, color = "Sub-80 Wins"), size = 3, show.legend = TRUE) +
+  labs(title = "Joey Votto's Cumulative War Over Time", subtitle = "Votto has been on seven teams with Sub-80 Wins",
+       x = "Seasons Since Sweet Spot Appearance",
+       y = "WAR", 
+       color = "") +
+  theme_minimal()
+
+
+```
+
 
 
 
