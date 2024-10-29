@@ -24,16 +24,11 @@ library(formattable)
 ```{r}
 batting_data <- read_csv("C:/desktop/jour479x_fall_2024/JoniacoBaseball - Sheet2.csv")
 
-
-```
-```{r}
-View(batting_data)
 ```
 This is all qualified batters from 2004 to 2024, there are a couple problems with this set. Some players have played on two teams. I want only players that stuck out the whole season. So I'm filtering for only players that have these teams. 
 ```{r}
-Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD")
+Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN","WSH", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD")
 filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
-
 ```
 The main statstic I will be using is Wins Above Replacement, or WAR. This is an estimate of how many wins a player is worth over a replacement level player. It has a very convluteted measurement, but for the sake of this presentation, I'm taking it at face value for wins. 
 
@@ -49,31 +44,27 @@ First you need to load in the Wins from each team from 2004 to 2024, this is dow
 Then you Bind together the Season from the standings, and the Team. Both tables have these values so binding it makes it easy.
 
 ```{r}
-standings <- read_csv("C:/desktop/jour479x_fall_2024/Stand.csv")
-View(Standings)
+standings <- read_csv("C:/desktop/jour479x_fall_2024/presentations/Standi.csv")
 merged_data <- merge(filtered, standings, by = c("Season", "Team"), all.x = TRUE)
 
 # Rename the Wins column if needed
 colnames(merged_data)[colnames(merged_data) == "W"] <- "Team_Wins"
-View(standings)
-
 ```
 With this data we want the Season, Name, Team, Games Played, Team Wins and add WAR/Team Wins. I also want to add an inqury of players with over 10% of their teams wins according to WAR and put a parameter on them to highlight this later. 
 
 ```{r}
-combined <- merged_data |> select(Season,Name,Team,G,WAR,Team_Wins) |> mutate(WARSHARE = WAR/Team_Wins, Highlight = ifelse(WARSHARE > 0.10, "High", "Low")) |> arrange(desc(WARSHARE))
+combined <- merged_data |> select(Season,Name,Team,G,WAR,Team_Wins) |> mutate(WARSHARE = WAR/Team_Wins, Highlight = ifelse(WARSHARE > 0.10, "High", "Low")) |> filter((!is.na(Team_Wins))) |> arrange(desc(WARSHARE)) 
 combined
 ```
 Here is a scatterplot of the data, showing Team Wins over WAR. There are a couple of standouts. 
 ```{r}
 ggplot(data = combined, aes(x = Team_Wins, y = WAR)) +
-  geom_point(size = 1) +  # Points for all players, adjust size as needed
+  geom_point(size = 1) + 
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
    geom_point(aes(color = Highlight)) +
-  
   labs(x = "Team Wins", y = "WAR") +
   theme_minimal() +
-  theme(legend.title = element_blank())  # Remove legend title if desired
+  theme(legend.title = element_blank()) 
 
 
 ```
@@ -126,7 +117,7 @@ combined |> filter(Team_Wins <= 60, WAR >= 5)
 ```
 Only Six guys show up, all players who would go on to be All-Stars at some point in their career on terrible teams. Cedric Mullins' 6 WAR is impressive, but his 11% WAR share makes it almost as impressive as some of the MVP season's seen above.
 
-I want to find different types of players. Summarizing our dataset, here's who were looking for. 
+This is the extreme, all of these players were having All-Star season's on bad teams. What about players that started on bad teams and were able to improve? From here I'm going to define the quartiles of good and bad teams. Here's the 
 ```{r}
 summary(combined)
 ```
@@ -143,24 +134,7 @@ summary(FQ)
 ```
 A quick summary look, the Mean WAR is 2.2, more than half a game less than the total dataset. 
 What does the average WAR look like for good teams vs. bad teams? Working off the quadrants shown from the combined dataset, the first quadrant are players on teams with less than 74 wins, where as the last quadrant are players on teams above 92 wins. How do these compare? Here's a boxplot to show the averages and the outliers. 
-```{r}
-library(ggplot2)
 
-data_long <- data.frame(
-  WAR = c(FQ$WAR, Mx$WAR),  # Combining FQ$WAR and Mx$WAR
-  Dataset = factor(c(rep("Under 74 Wins", length(Mx$WAR)), rep("Over 92 Wins", length(FQ$WAR))))
-)
-
-# Create the boxplot
-ggplot(data_long, aes(x = Dataset, y = WAR, fill = Dataset)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of First Quartile vs Fourth Quartile Team Wins in 20 Years", 
-       x = "Dataset", y = "WAR") +
-  theme_minimal()
-
-
-
-```
 Simliar to the line chart, the median WAR of players who are on teams with less than 74 wins is less than the first quartile of players on teams with over 92 wins. This seems obvious, but it puts into perspective our outlier group at the top of the graph. 
 ```{r}
 FQ |> arrange(desc(WARSHARE))
@@ -173,7 +147,7 @@ SweetSpot
 ```
 At this point in the sample, most players have simliar WARs and WARSHARES. The parameters of this data is between a 2 and 4 WAR and a team under 74 wins. But there's still around 217 players who fit this criteria. At the top is David DeJesus, who stands out of this sample by missing 40 games and being over 7% of his teams wins in WARSHARE. 
 ```{r}
-combined |> filter(Name == "David DeJesus")
+combined |> filter(Name == "David DeJesus") |> arrange(Season)
 ```
 Not shown is DeJesus' rookie year, where he finished 6th in Rookie of the Year voting in 2004. His 2005 season was a successful sophmore season, where it looked like he was a future All-Star for the Royals. Looking at his career Trajectory, DeJesus had 7 qualified seasons, all on teams with 75 wins or less. His tragetory peaked in his second season, where he had 4.2 WAR in 119 games, a pretty impressive feat. It took DeJesus 8 years before he got to a team with over 80 wins, but by then, his production wasn't there. 
 ```{r}
@@ -188,23 +162,74 @@ ggplot(dejesus_data, aes(x = Season, y = WAR)) +
   theme_minimal()
 
 ```
-I want to do this for other players, but this is the base formatting. 
+The goal of this project is to find players who were able to succeed on bad teams, while DeJesus did in his first two years, the rest of his career he didn't see simliar success, well what players did? 
+
+Here is a graph of season's since the sweet spot season. If a player was on a team below 74 Wins and in the sweet spot, this is a plot of the trajectory. 
+
 
 ```{r}
-ss <- SweetSpot |> select(Name)
-names <- data.frame(ss)
-combined |> filter(filter(Name %in% names$Name)) |> group_by(Name)
+first_season_benchmark <- ss |>
+  group_by(Name) |>
+  summarize(First_Season = min(Season), .groups = "drop")
+progression_data <- combined |>
+  filter(Name %in% first_season_benchmark$Name) |> 
+  left_join(first_season_benchmark, by = "Name") |>
+  arrange(Name, Season) |> 
+  mutate(Seasons_Since = Season - First_Season) |> 
+  select(-First_Season) |> filter(Seasons_Since >= 0) 
+pd <- progression_data |>
+  group_by(Name) |>
+  arrange(Name, Season) |>
+  mutate(keep = ifelse(Seasons_Since == 0 & lag(Seasons_Since == 0, default = FALSE), FALSE, TRUE)) |>  # Mark subsequent 0s as FALSE
+  filter(keep) |>  # Keep only rows marked as TRUE
+  select(-keep) |>  # Remove helper column
+  ungroup()
+
+comp <- pd |>
+  group_by(Name) |>
+  arrange(Season) |>
+  mutate(totalWAR = cumsum(WAR)) |>
+  ungroup() |> arrange(Name)
+comp
+jones <- comp|> filter(Name == "Adam Jones")
+jesus <- comp |> filter(Name == "David DeJesus")
 ```
 
 ```{r}
-combined |> 
- # Filter batting_data for only players in filtered_names
+ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
+  geom_line() +
+  labs(title = "Player WAR Progression Over Time",
+       x = "Seasons Since First Appearance",
+       y = "WAR") +
+  theme_minimal()
+```
+
+```{r}
+comp |>
+  filter(Team_Wins < 74) |>  # Filter for teams with fewer than 74 wins
   group_by(Name) |>  # Group by player name
-  summarize(Total_WAR = sum(WAR, na.rm = TRUE), Total_Team_Wins = sum(Team_Wins,na.rm = TRUE), TotalWARSHARE = Total_WAR/Total_Team_Wins)|>  # Summarize total WAR for each player
-  arrange(desc(TotalWARSHARE))  # Arrange by descending WAR
+  summarize(Count= n()) |>  # Count occurrences for each player
+  ungroup()  |> arrange(desc(Count))
+```
+```{r}
+comp |> arrange(desc(WAR))
+```
+```{r}
+library(ggplot2)
+comp <- comp |>
+  group_by(Name) |>
+  mutate(High_WAR_Player = any(WAR > 7)) |>
+  ungroup()
 
-# View the result
-filtered_total_war
-
+# Plot with highlighted lines and points
+ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
+  geom_line(aes(color = High_WAR_Player), size = 1) +  # Highlight lines for high-WAR players
+  geom_point(data = comp |> filter(WAR > 7), aes(x = Seasons_Since, y = WAR), color = "black", size = 1.5) +  # Highlight points for WAR > 7
+   geom_hline(yintercept = 7, linetype = "dashed", color = "darkred", size = 0.8) + 
+  scale_color_manual(values = c("FALSE" = "gray", "TRUE" = "red")) +  # Blue for high-WAR players, gray otherwise
+  labs(title = "Player WAR Progression Over Time",
+       x = "Seasons Since First Appearance",
+       y = "WAR") +
+  theme_minimal()
 ```
 

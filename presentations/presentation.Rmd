@@ -1,0 +1,193 @@
+Presentation - JOUR479X - Jonathan Iacovacci
+
+In 2013 Mike Trout earned 10.1 Wins Above Replacement(WAR) according to FanGraphs, a incredible accomplishment considering only seven out of more than 2,600 qualifed batters have been able to reach 10 WAR in the past 20 years. But Trout wouldn't be able to face postseason competition, with his team only winning 78 games that season. 
+```{r}
+library(baseballr)
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(formattable)
+batting_data <- read_csv("C:/desktop/jour479x_fall_2024/presentations/JoniacoBaseball - Sheet2.csv")
+Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN","WSH", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD")
+filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
+filtered |> select(Season,Name,WAR) |> arrange(desc(WAR))
+
+```
+Many say the players with the most championships are the best players. It's a narrative used when comparing Michael Jordan and Lebron James, Tom Brady with any Quarterback, etc. But sometimes, the best players can be found on mediocre teams, and sometimes players start unnoticed on bad teams, and work there way to becoming all-time greats.
+
+WAR is a stat created by fangraphs to calculate the value a player has to their team in Wins above a replacement level player. While the stat has an intricate process, for the sake of this I'm going to take this at face value as a "Win" that can be calculated.
+
+Creating a statistic called "WARSHARE" that looks at the percentage a player is worth to their team in Wins, there can be some clarity on how valuable a player is to a given team by giving their WAR context through team wins. All WARSHARE comes out to is WAR divide by Team Wins. A player with a 0.10 WARSHARE is worth 10% of their Team's Wins that season. To get WARSHARE is siimple, by taking the statistics from batting, and pairing them with standings statistics from the past 20 years. 
+```{r}
+standings <- read_csv("C:/desktop/jour479x_fall_2024/presentations/Standi.csv")
+merged_data <- merge(filtered, standings, by = c("Season", "Team"), all.x = TRUE)
+colnames(merged_data)[colnames(merged_data) == "W"] <- "Team_Wins"
+combined <- merged_data |> select(Season,Name,Team,G,WAR,Team_Wins) |> mutate(WARSHARE = WAR/Team_Wins, Highlight = ifelse(WARSHARE > 0.10, "High", "Low")) |> filter(!is.na(Team_Wins)) |> arrange(desc(WARSHARE))
+combined
+```
+Notice from before when looking at WAR top down Aaron Judge ranked second, and 13' Trout ranked 7th? Well when you adjust for team performance in a given year, Mike Trout's best year slots him in at second, where he made up almost 12.9% of his team's wins. Even when he's almost 2 WAR apart from Bonds, he's only a tenth of a percent apart in WARSHARE. 
+
+WARSHARE highlights players who were able to thrive on bad teams, or players who were historic. 16' Cedric Mullins, and 15' Joey Votto both had under 8 WAR, but are in the Top 10 because they both played on nteams with under 65 wins. 
+
+Quickly back to Mike Trout, he makes up three of the top 10 people on the WARSHARE leaderboard. When looking at his whole body of work, he stands out like a sore thumb. Highlighted in red are players that make up over 10% of their team's WARSHARE. Highlighted in blue is Mike Trout's production. As you can see, they match up well. 
+```{r}
+ggplot(data = combined, aes(x = Team_Wins, y = WAR)) +
+  geom_point(size = 1) +  # Points for all players, adjust size as needed
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+   geom_point(aes(color = Highlight)) +
+  geom_point(data = subset(combined, Name == "Mike Trout"), aes(color = "Mike Trout"), size = 2) +  # Highlight Mike Trout
+  labs(title = "Mike Trout's impressive production", subtitle = "Mike Trout has eight seasons over 6.5 WAR despite only reaching over 90 Team Wins once", x = "Team Wins", y = "WAR") +
+  theme_minimal() +
+  theme(legend.title = element_blank())  # Remove legend title if desired
+```
+Trout has only been on a team with over 90 Team Wins once, and has only been to the playoffs once. Despite this, he's turned in 
+Some of the best seasons of all time, which carry his WARSHARE numbers. To really see how impressive his numbers are, there have been around 30 players in the past 20 years that have over a 10% WARSHARE. Aaron Judge and Bobby Witt Jr. are the only players to do it in more than one season. Mike Trout has done it six times.
+```{r}
+Over10 <- combined |> filter(Highlight == "High")
+Over10 |> group_by(Name) |> summarize(Count = n()) |> arrange(desc(Count))
+```
+A final point on Trout. He's had injury problems spanning this current decade, which has sidelined him quite a lot. But he's also missed games in his past seasons. If We adjust his WARSHARE for missed games, you come out to some ridiculous WARSHARE numbers. 
+```{r}
+combined |> mutate(Adjust = `WARSHARE`/(G/162)) |> arrange(desc(Adjust)) |> mutate(Difference = Adjust - `WARSHARE`) |> arrange(desc(Difference))
+```
+A notable name on here is Chipper Jones, who benfits for doing well on a bad team and missing over 40 games and still a qualfied batter according to fangraphs. Jones sported close to a 10% WARSHARE in 2008, but if he played the rest of his 34 games, he was well on his was to getting to 12.5%, which would rank 4th in the past 20 years. Mike Trout's one season where he finished under 7 WAR he missed 48 games, if he kept going he was on pace for an extra 3.5% share of his teams wins. Joe Mauer had 5 WAR in 113 games on a team that would go on to win 66 games that year. If he stayed healthy for 162 games, he'd be in a select club of players that were worth over 10% of their wins according to WAR in the past 20 years.
+
+All of these players have had phenomenal seasons in their career, but what about players of the left hand quadrant of the scatterplot? The ones where winning doesn't come easy? To find what I want to call "SweetSpot" we can summarize the combined dataset to find quartiles.
+```{r}
+summary(combined)
+```
+So, we want players on teams with less than 74 Wins, the first quartile. Than from the First Quartile we want players between the Mean and the 3rd Quartile. Players who at least start out impressive but dont standout.
+```{r}
+FQ <- combined |> filter(Team_Wins <= 74)
+summary(FQ)
+```
+Leaving a little room, we are looking for players who are on teams with less than 74 Wins as well as between 2.2 and 4 WAR.
+```{r}
+SweetSpot <- FQ |> filter(WAR <= 4 & WAR >= 2.2) |> arrange(desc(WAR))
+SweetSpot
+```
+From here, we have 230 players/seasons per player of good players on bad teams. From this sweet spot, this will serve as an anchor for the seasons afterward. How have these players progressed since this season?
+```{r}
+first_season_benchmark <- ss |>
+  group_by(Name) |>
+  summarize(First_Season = min(Season), .groups = "drop")
+progression_data <- combined |>
+  filter(Name %in% first_season_benchmark$Name) |> 
+  left_join(first_season_benchmark, by = "Name") |>
+  arrange(Name, Season) |> 
+  mutate(Seasons_Since = Season - First_Season) |> 
+  select(-First_Season) |> filter(Seasons_Since >= 0) 
+pd <- progression_data |>
+  group_by(Name) |>
+  arrange(Name, Season) |>
+  mutate(keep = ifelse(Seasons_Since == 0 & lag(Seasons_Since == 0, default = FALSE), FALSE, TRUE)) |>  # Mark subsequent 0s as FALSE
+  filter(keep) |>  # Keep only rows marked as TRUE
+  select(-keep) |>  # Remove helper column
+  ungroup()
+comp <- pd |>
+  group_by(Name) |>
+  arrange(Season) |>
+  mutate(totalWAR = cumsum(WAR)) |>
+  ungroup() |> arrange(Name)
+comp
+ohtani <- comp|> filter(Name == "Shohei Ohtani")
+witt <- comp|> filter(Name == "Bobby Witt Jr.")
+jesus <- comp |> filter(Name == "David DeJesus")
+votto <- comp |> filter(Name == "Joey Votto")
+```
+
+```{r}
+
+ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
+  geom_line(color = "gray") +  # Sets the default line color to gray
+  geom_line(data = jesus, aes(x = Seasons_Since, y = WAR, group = Name), color = "red", size = 1.5) +  # Red line for DeJesus
+  labs(title = "David DeJesus Vs. Sweet Spot Sample",
+       x = "Seasons Since Sweet Spot Appearance",
+       y = "WAR") +
+  theme_minimal()
+
+```
+One player that has shown on a couple of these tables is David DeJesus. After
+ranking 6th in rookie of the year in 2004, his 2005 season was a successful sophomore season, where it looked like he was a future All-Star for the Royals. Looking at his career Trajectory, DeJesus had 7 qualified seasons, all on teams with 75 wins or less. His tragetory peaked in his second season, where he had 4.2 WAR in 119 games, a pretty impressive feat. It took DeJesus 8 years before he got to a team with over 80 wins, but by then, his production wasn't there. 
+```{r}
+
+ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
+  geom_line(color = "gray") +
+  geom_line(data = ohtani, aes(x = Seasons_Since, y = WAR, color = "Ohtani"), size = 1.5) +  # Red line for Ohtani
+  geom_line(data = witt, aes(x = Seasons_Since, y = WAR, color = "Witt"), size = 1.5) +  # Blue line for Witt
+  scale_color_manual(name = "Player", values = c("Ohtani" = "red", "Witt" = "blue")) +  # Custom legend labels
+  labs(title = "Ohtani and Witt have thrived in their second season since Sweet Spot",
+       x = "Seasons Since Sweet Spot Appearance",
+       y = "WAR") +
+  theme_minimal()
+
+```
+
+
+Two players stand out by succeeding really early after their sweet spot seasons are Bobby Witt Jr. and Shohei Ohtani. The only reason Ohtani is in this sample is an injury wridden 2022 season while on a team unable to reap the talent of Mike Trout and Shohei Ohtani. Ohtani bounced back in 2024 and joined the Dodgers, which helped.  Witt was really good for a Royals team that was second last in the MLB record in 2022. In 2024, the Royals made it to the ALDS, and Witt had one of the best years in franchise history with over 10 WAR. 
+```{r}
+ggplot(comp, aes(x = Seasons_Since, y = totalWAR, group = Name)) +
+  geom_line(color = "gray") +
+  geom_line(data=votto,aes (x=  Seasons_Since, y = totalWAR, group = Name), color = "red", size = 1.5) +
+  labs(title = "Joey Votto's impressive longevity", subtitle = "Votto's 53 WAR is the best in this sample, carred by his longevity",
+       x = "Seasons Since Sweet Spot Apperance",
+       y = "TotalWAR") +
+  theme_minimal()
+```
+Finally, the answer to this question is most exemplified by Joey Votto. While he hasn't always been on a team that is sub 74 wins, he's only been to the playoffs once in a lengthy career. He has steadly been racking up seasons that put him in the Hall of Fame conversation. Votto fits the bill of this inquiry perfectly, he's only been to the playoffs once in his career, and he's racked up WAR an impressive but steady pace. My favorite part about this is the sharp up tick at the end of the year by year graph. After declining for a couple years, Votto had a very solid 2021 that rivaled some of his previous years.
+```{r}
+ggplot(comp, aes(x = Seasons_Since, y = WAR, group = Name)) +
+  geom_line(color = "gray") +
+  geom_line(data=votto,aes (x=  Seasons_Since, y = WAR, group = Name), color = "red", size = 1.5) +
+  labs(title = "Joey Votto's impressive longevity", subtitle = "Votto's 53 WAR is the best in this sample, carred by his longevity",
+       x = "Seasons Since Sweet Spot Apperance",
+       y = "TotalWAR") +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
