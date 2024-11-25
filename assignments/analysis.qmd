@@ -2,7 +2,7 @@
 library(tidyverse)
 library(dplyr)
 ```
-
+Loading in the data, I wanted to see the trend of the total scores of baseball championships. Here is this is in line chart format. 
 ```{r}
 Championships <- read.csv("https://raw.githubusercontent.com/maryland-high-school-sports/record-books/refs/heads/main/spring/baseball/championships.csv")
 data <- Championships |> filter(Status == "Champion") |> group_by(Year) |> summarise(TotalScore = sum(Team.Score + Opponent.Score))
@@ -19,4 +19,8 @@ ggplot(data, aes(x = Year, y = TotalScore)) +
   ) +
   theme_minimal()
 ```
+Now, here are the most champions in Baseball with the data collected. 
+```{r}
+Championships |> filter(Status == "Champion") |> group_by(Team) |> summarize(Count = n()) |> arrange (desc(Count))
 
+```
