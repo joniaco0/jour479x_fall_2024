@@ -123,3 +123,16 @@ ggplot() +
   )
 ```
 
+```{r}
+library(tidyverse)
+rosters <- read.csv("https://thescoop.org/sports-data-files/rosters.csv")
+teams <- read.csv("https://thescoop.org/sports-data-files/team_stats.csv")
+teamID <- read.csv("https://thescoop.org/sports-data-files/teams_with_ids.csv")
+
+rosters_with_teams_stats <- rosters |> inner_join(teams, join_by(ncaa_id))
+```
+```{r}
+rosters_with_teams_stats
+```
+
+

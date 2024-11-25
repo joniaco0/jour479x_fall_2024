@@ -2,29 +2,37 @@
 
 ```{r}
 library(tidyverse)
+library(ggrepel)
 ```
 
 ```{r}
-gamelogs <- wbblogs24
+teams <- read_csv("https://dwillis.github.io/sports-data-files/wbbstats25.csv")
 ```
 
 ```{r}
-teamquality <- gamelogs |> 
-  select(Conference, Team, TeamFGPCT, TeamTotalRebounds, OpponentFGPCT, OpponentTotalRebounds)
+umd <- teams |> filter(School == "Maryland")
+unbeaten <- teams|> filter(OverallLosses == 0)
+big_ten <- teams |> filter(School %in% c('Illinois', 'Indiana', 'Iowa', 'Michigan', 'Michigan State', 'Ohio State', 'Minnesota', 'Nebraska', 'Northwestern', 'Rutgers', 'Southern California', 'UCLA', 'Oregon', 'Washington', 'Maryland'))
+avg_srs <- teams |> filter(!is.na(OverallSRS)) |> summarize(mean(OverallSRS)) |> pull(1)
+avg_sos <- teams |> filter(!is.na(OverallSOS)) |> summarize(mean(OverallSOS)) |> pull(1)
+ggplot() +
+  geom_point(data = unbeaten, aes(x = OverallSRS, y = OverallSOS), color = "green") +
+  geom_point(data = big_ten, aes(x = OverallSRS, y= OverallSOS), color = "blue")
+  geom_point(data = umd, aes(x = OverallSRS, y = OverallSOS), color = "red") +
+  geom_vline(xintercept = avg_srs) + 
+  geom_hline(yintercept = avg_sos) +
+  geom_text_repel(
+    data=unbeaten, 
+    aes(x=OverallSRS, y=OverallSOS, label=School)
+  )
+
 ```
 
 ```{r}
-teamtotals <- teamquality |> 
-  filter(!is.na(OpponentFGPCT)) |>
-  group_by(Conference, Team) |> 
-  summarise(
-    FGAvg = mean(TeamFGPCT), 
-    ReboundAvg = mean(TeamTotalRebounds), 
-    OppFGAvg = mean(OpponentFGPCT),
-    OffRebAvg = mean(OpponentTotalRebounds)
-    ) 
-teamtotals
+
 ```
+
+
 ```{r}
 teamzscore <- teamtotals |> 
   mutate(

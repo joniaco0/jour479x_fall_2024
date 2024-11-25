@@ -1,0 +1,96 @@
+```{r}
+library(tidyverse)
+library(dplyr)
+library(readr)
+baseball <- read.csv("https://raw.githubusercontent.com/joniaco0/jour479x_fall_2024/refs/heads/main/data/WARdata.csv")
+standings <- read.csv("https://raw.githubusercontent.com/joniaco0/jour479x_fall_2024/refs/heads/main/data/MLB_Data_with_Abbreviations%20-%20MLB_Data_with_Abbreviations.csv")
+standings <- standings |> rename(Team = Tm)
+standings
+```
+```{r}
+merged_data <- baseball |>
+  left_join(standings, by = c("Team", "Season"))
+merged_data
+```
+```{r}
+corrections <- merged_data |>
+  mutate(Team = case_when(
+    Team %in% c("FLA", "MIA") ~ "MIA",
+    Team %in% c("ANA", "LAA") ~ "LAA",
+    Team %in% c("TBR", "TBD") ~ "TBR",
+    Team %in% c("WSN", "MON") ~ "WSN",
+    TRUE ~ Team # Keep other teams unchanged
+  ))
+standings <- standings |>
+  mutate(Team = case_when(
+    Team %in% c("FLA", "MIA") ~ "MIA",
+    Team %in% c("ANA", "LAA") ~ "LAA",
+    Team %in% c("TBR", "TBD") ~ "TBR",
+    Team %in% c("WSN", "MON") ~ "WSN",
+    TRUE ~ Team # Keep other teams unchanged
+  ))
+maindata <- corrections |> select(Season, Name, PA, Team, WAR, pythW) |> mutate(WARSHARE = WAR/pythW)
+maindata |> arrange(desc(WARSHARE))
+```
+```{r}
+ggplot() +
+geom_point(data = maindata, aes(x = pythW, y = WAR))
+```
+```{r}
+team_total_war <- war_summary |>
+  group_by(Team) |>
+  summarize(Total_WAR = sum(Total_WAR), .groups = "drop") |>
+  arrange(desc(Total_WAR))
+
+war_summary <- war_summary |>
+  mutate(Team = factor(Team, levels = team_total_war$Team))
+
+# Plot the stacked bar chart
+ggplot(war_summary, aes(x = Team, y = Total_WAR, fill = Season)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Total WAR by Team and Season",
+    x = "Team",
+    y = "Total WAR",
+    fill = "Season"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming your data is in a data frame called 'standings'
+# and contains columns 'Season', 'pythW', 'pythL', and 'Team'
+
+standings <- standings |>
+  mutate(
+    WinsAbove500 = pythW - 0.5 * (pythW + pythL) # Calculate Wins Above .500
+  ) |>
+  arrange(Team, Season) |> # Ensure the data is ordered by Team and Season
+  group_by(Team) |>
+  mutate(
+    CumulativeWinsAbove500 = cumsum(WinsAbove500) # Calculate cumulative sum per team
+  ) |>
+  ungroup() |>
+  filter(Season >= 2000) # Filter for years starting from 2000
+
+# Plotting the data
+ggplot(standings, aes(x = Season, y = CumulativeWinsAbove500, color = Team, group = Team)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Cumulative Wins Above .500 by Team (2000 Onwards)",
+    x = "Season",
+    y = "Cumulative Wins Above .500"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+
+```
+

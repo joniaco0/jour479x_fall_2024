@@ -1,0 +1,22 @@
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+Championships <- read.csv("https://raw.githubusercontent.com/maryland-high-school-sports/record-books/refs/heads/main/spring/baseball/championships.csv")
+data <- Championships |> filter(Status == "Champion") |> group_by(Year) |> summarise(TotalScore = sum(Team.Score + Opponent.Score))
+data
+```
+```{r}
+ggplot(data, aes(x = Year, y = TotalScore)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Total Score by Year and Class (Champions)",
+    x = "Year",
+    y = "Total Score"
+  ) +
+  theme_minimal()
+```
+
