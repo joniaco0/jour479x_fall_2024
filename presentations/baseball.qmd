@@ -58,32 +58,40 @@ ggplot(war_summary, aes(x = Team, y = Total_WAR, fill = Season)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 ```{r}
-library(ggplot2)
 library(dplyr)
+library(ggplot2)
+library(ggiraph)
 
-# Assuming your data is in a data frame called 'standings'
-# and contains columns 'Season', 'pythW', 'pythL', and 'Team'
-
+# Process data
 standings <- standings |>
   mutate(
-    WinsAbove500 = pythW - 0.5 * (pythW + pythL) # Calculate Wins Above .500
+    WinsAbove500 = pythW - 0.5 * (pythW + pythL) 
   ) |>
-  arrange(Team, Season) |> # Ensure the data is ordered by Team and Season
+  arrange(Team, Season) |>
   group_by(Team) |>
   mutate(
-    CumulativeWinsAbove500 = cumsum(WinsAbove500) # Calculate cumulative sum per team
+    CumulativeWinsAbove500 = cumsum(WinsAbove500) 
   ) |>
   ungroup() |>
-  filter(Season >= 2000) # Filter for years starting from 2000
+  filter(Season >= 2000) 
 
-# Plotting the data
-ggplot(standings, aes(x = Season, y = CumulativeWinsAbove500, color = Team, group = Team)) +
-  geom_line(size = 1) +
-  geom_point(size = 2) +
+standings <- standings |>
+  mutate(css_id = paste0("line-", Team))
+
+gg <- ggplot(standings, aes(
+  x = Season,
+  y = CumulativeWinsAbove500,
+  group = Team
+)) +
+  geom_line_interactive(
+    aes(color = Team, tooltip = paste0("Team: ", Team, "<br>Season: ", Season, "<br>Cumulative Wins Above .500: ", CumulativeWinsAbove500), data_id = css_id),
+    size = 1
+  ) +
   labs(
     title = "Cumulative Wins Above .500 by Team (2000 Onwards)",
     x = "Season",
-    y = "Cumulative Wins Above .500"
+    y = "Cumulative Wins Above .500",
+    color = "Team"
   ) +
   theme_minimal() +
   theme(
@@ -91,6 +99,127 @@ ggplot(standings, aes(x = Season, y = CumulativeWinsAbove500, color = Team, grou
     legend.position = "bottom"
   )
 
+# Custom CSS for hover effects
+custom_css <- "
+  .ggiraph-hover { 
+    stroke-width: 3px; 
+    opacity: 1; 
+  }
+  .ggiraph-active line {
+    opacity: 0.2; /* Reduce opacity for non-hovered lines */
+  }
+  line:hover { 
+    opacity: 1; 
+    stroke-width: 3px; 
+  }
+"
+
+# Convert ggplot to an interactive ggiraph object with custom CSS
+interactive_plot <- girafe(ggobj = gg)
+interactive_plot <- girafe_options(
+  interactive_plot,
+  opts_hover(css = custom_css),
+  opts_hover_inv(css = "opacity: 0.2;")
+)
+
+# Print the interactive chart
+interactive_plot
+
+
+```
+
+Here is the average WAR for each year. For simplicity sake, we will put it at two. 
+```{r}
+merged_data |> group_by(Season) |> summarize(mean(WAR))
+```
+```{r}
+library(ggplot2)
+library(ggiraph)
+library(dplyr)
+
+# Process data: Calculate WAR relative to 2 and cumulative values
+filtered_data <- maindata |>
+  filter(Season >= 2000) |>
+  mutate(Relative_WAR = WAR - 2) |>
+  group_by(Team, Season) |>
+  summarize(
+    Total_Relative_WAR = sum(Relative_WAR, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(Team, Season) |>
+  group_by(Team) |>
+  mutate(
+    CumulativeRelativeWAR = cumsum(Total_Relative_WAR),
+    css_id = paste0("line-", Team)
+  ) |>
+  ungroup()
+
+# Identify Los Angeles Angels for special styling
+filtered_data <- filtered_data |>
+  mutate(
+    Highlighted = ifelse(Team == "LAA", "Highlighted", "Normal")
+  )
+
+# Create the ggplot object
+gg <- ggplot(filtered_data, aes(
+  x = Season,
+  y = CumulativeRelativeWAR,
+  group = Team
+)) +
+  geom_line_interactive(
+    aes(
+      color = Highlighted,
+      tooltip = paste0(
+        "Team: ", Team, "<br>Season: ", Season, 
+        "<br>Cumulative WAR Relative to 2: ", CumulativeRelativeWAR
+      ),
+      data_id = css_id
+    ),
+    size = ifelse(filtered_data$Team == "LAA", 1.5, 1) # Thicker line for Angels
+  ) +
+  scale_color_manual(
+    values = c(
+      "Highlighted" = "red", # Highlight LAA in red
+      "Normal" = "gray"      # Other teams in gray
+    )
+  ) +
+  labs(
+    title = "Cumulative WAR Relative to 2 by Team (2000 Onwards)",
+    x = "Season",
+    y = "Cumulative Relative WAR",
+    color = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+# Custom CSS for hover effects
+custom_css <- "
+  .ggiraph-hover { 
+    stroke-width: 3px; 
+    opacity: 1; 
+  }
+  .ggiraph-active line {
+    opacity: 0.2; /* Reduce opacity for non-hovered lines */
+  }
+  line:hover { 
+    opacity: 1; 
+    stroke-width: 3px; 
+  }
+"
+
+# Convert ggplot to an interactive ggiraph object with custom CSS
+interactive_plot <- girafe(ggobj = gg)
+interactive_plot <- girafe_options(
+  interactive_plot,
+  opts_hover(css = custom_css),
+  opts_hover_inv(css = "opacity: 0.2;")
+)
+
+# Print the interactive chart
+interactive_plot
 
 ```
 

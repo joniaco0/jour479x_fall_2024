@@ -31,9 +31,8 @@ View(batting_data)
 ```
 This is all qualified batters from 2004 to 2024, there are a couple problems with this set. Some players have played on two teams. I want only players that stuck out the whole season. So I'm filtering for only players that have these teams. 
 ```{r}
-Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN","WSH", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD")
-filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
-
+Teams <- c("ARI", "LAD", "NYY", "BAL", "MIL", "PHI", "SDP", "HOU", "NYM", "MIN", "TOR", "CHC", "CLE", "SEA", "BOS", "KCR", "DET", "ATL", "SFG", "TEX", "STL", "TBR", "OAK", "WSN","WSH", "CIN", "PIT", "MIA", "LAA", "COL", "CHW","FLA","TBD","MON")
+filtered <- batting_data |> filter(Team %in% Teams) |> filter (Season %in% c(2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024))
 ```
 The main statstic I will be using is Wins Above Replacement, or WAR. This is an estimate of how many wins a player is worth over a replacement level player. It has a very convluteted measurement, but for the sake of this presentation, I'm taking it at face value for wins. 
 
