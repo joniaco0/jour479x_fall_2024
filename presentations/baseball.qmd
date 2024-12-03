@@ -8,11 +8,13 @@ standings <- standings |> rename(Team = Tm)
 standings
 ```
 ```{r}
+baseball$Season <- as.integer(baseball$Season)
 merged_data <- baseball |>
   left_join(standings, by = c("Team", "Season"))
 merged_data
 ```
 ```{r}
+merged_data$WAR <- as.numeric(merged_data$WAR)
 corrections <- merged_data |>
   mutate(Team = case_when(
     Team %in% c("FLA", "MIA") ~ "MIA",
@@ -37,7 +39,7 @@ ggplot() +
 geom_point(data = maindata, aes(x = pythW, y = WAR))
 ```
 ```{r}
-team_total_war <- war_summary |>
+team_total_war <- maindata |>
   group_by(Team) |>
   summarize(Total_WAR = sum(Total_WAR), .groups = "drop") |>
   arrange(desc(Total_WAR))
@@ -73,10 +75,14 @@ standings <- standings |>
     CumulativeWinsAbove500 = cumsum(WinsAbove500) 
   ) |>
   ungroup() |>
-  filter(Season >= 2000) 
+  filter(Season >= 2000)
 
+# Add a custom highlight column for LAA
 standings <- standings |>
-  mutate(css_id = paste0("line-", Team))
+  mutate(
+    css_id = paste0("line-", Team),
+    Highlight = ifelse(Team == "LAA", "LAA", "Other")
+  )
 
 gg <- ggplot(standings, aes(
   x = Season,
@@ -84,11 +90,18 @@ gg <- ggplot(standings, aes(
   group = Team
 )) +
   geom_line_interactive(
-    aes(color = Team, tooltip = paste0("Team: ", Team, "<br>Season: ", Season, "<br>Cumulative Wins Above .500: ", CumulativeWinsAbove500), data_id = css_id),
-    size = 1
+    aes(
+      color = Highlight,
+      alpha = ifelse(Highlight == "LAA", 1, 0.6),
+      size = ifelse(Highlight == "LAA", 1.2, 0.8),
+      tooltip = paste0("Team: ", Team, "<br>Season: ", Season, "<br>Cumulative Wins Above .500: ", CumulativeWinsAbove500),
+      data_id = css_id
+    )
   ) +
+  scale_color_manual(values = c("LAA" = "red", "Other" = "blue")) +  # Slightly darker gray for clarity
+  scale_size_identity() +  # Map size directly without legend
   labs(
-    title = "Cumulative Wins Above .500 by Team (2000 Onwards)",
+    title = "Wins above .500 since 2000 (Highlighting LAA)",
     x = "Season",
     y = "Cumulative Wins Above .500",
     color = "Team"
@@ -222,4 +235,189 @@ interactive_plot <- girafe_options(
 interactive_plot
 
 ```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Create a facet line chart
+ggplot(maindata, aes(x = Season, y = WAR, group = Name, color = Name)) +
+  geom_line() +
+  geom_point() +  # Optional: Add points to highlight individual values
+  facet_wrap(~ Name, scales = "free_y") +  # Create facets for each player
+  labs(
+    title = "Player WAR Over Seasons",
+    x = "Season",
+    y = "WAR",
+    color = "Player"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),  # Style facet labels
+    axis.text.x = element_text(angle = 45, hjust = 1)   # Rotate x-axis labels for clarity
+  )
+
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Filter data for LAA players only
+laa_data <- maindata |>
+  filter(Team == "NYY")
+
+# Create a line chart for LAA players
+ggplot(laa_data, aes(x = Season, y = WAR, group = Name, color = "red")) +
+  geom_line(linewidth = 1) +
+  geom_point() +  # Optional: Add points to highlight individual values
+  labs(
+    title = "LAA Players' WAR Over Seasons",
+    x = "Season",
+    y = "WAR",
+    color = "Player"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",  # Place the legend below the plot
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    plot.title = element_text(size = 16, face = "bold")  # Style the title
+  )
+
+```
+```{r}
+summary(maindata)
+```
+```{r}
+maindata$PA <- as.numeric(maindata$PA) 
+team_stats <- maindata |>
+  group_by(Season, Team) |>
+  summarize(
+    total_WAR = sum(WAR),
+    weighted_WAR = weighted.mean(WAR, w = PA, na.rm = TRUE),       # Weighted WAR
+    weighted_WARSHARE = weighted.mean(WARSHARE, w = PA, na.rm = TRUE),  # Weighted WARSHARE
+    high_contributors = sum(WARSHARE > 0.07),
+    pythW = mean(pythW, na.rm = TRUE)  # Average Pythagorean Wins
+  )
+
+```
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(fastDummies)
+
+# Step 1: One-hot encode the Team column
+team_stats_encoded <- team_stats |>
+  dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+
+# Step 2: Ensure all columns are numeric
+team_stats_encoded <- team_stats_encoded |>
+  mutate(across(everything(), as.numeric))
+
+# Step 3: Handle NA, NaN, and Inf values
+team_stats_encoded <- team_stats_encoded |>
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> # Replace NA with column mean
+  mutate(across(everything(), ~ ifelse(is.infinite(.), max(.[!is.infinite(.)], na.rm = TRUE), .))) # Replace Inf with max
+
+# Step 4: Scale the data
+scaled_data <- team_stats_encoded |>
+  select(total_WAR, weighted_WAR, weighted_WARSHARE, pythW, starts_with("Team_")) |>
+  scale()
+
+# Step 5: Perform K-means clustering
+set.seed(42)  # Ensure reproducibility
+clusters <- kmeans(scaled_data, centers = 4)
+
+# Step 6: Add cluster labels back to the dataset
+team_stats_clustered <- team_stats_encoded |>
+  mutate(cluster = clusters$cluster)
+
+# Step 7: Visualize the clusters
+ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WARSHARE, color = factor(cluster))) +
+  geom_point(size = 3) +
+  labs(
+    title = "Team Clustering Based on Performance Metrics",
+    x = "Pythagorean Wins",
+    y = "Weighted WARSHARE",
+    color = "Cluster"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggiraph)
+library(fastDummies)
+
+# Step 1: One-hot encode the Team column (retain the original Team column)
+team_stats_encoded <- team_stats |>
+  dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = FALSE)
+
+# Step 2: Ensure numeric columns are numeric, but keep Team as character
+team_stats_encoded <- team_stats_encoded |>
+  mutate(across(-Team, as.numeric))  # Convert all columns except Team to numeric
+
+# Step 3: Handle NA, NaN, and Inf values
+team_stats_encoded <- team_stats_encoded |>
+  mutate(across(-Team, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> # Replace NA with column mean
+  mutate(across(-Team, ~ ifelse(is.infinite(.), max(.[!is.infinite(.)], na.rm = TRUE), .))) # Replace Inf with max
+
+# Step 4: Scale the data (excluding Team)
+scaled_data <- team_stats_encoded |>
+  select(total_WAR, weighted_WAR, weighted_WARSHARE, pythW, starts_with("Team_")) |>
+  scale()
+
+# Step 5: Perform K-means clustering
+set.seed(42)  # Ensure reproducibility
+clusters <- kmeans(scaled_data, centers = 5)
+
+# Step 6: Add cluster labels back to the dataset
+team_stats_clustered <- team_stats_encoded |>
+  mutate(cluster = clusters$cluster)
+
+# Step 7: Add interactive features (tooltips and CSS IDs)
+team_stats_clustered <- team_stats_clustered |>
+  mutate(
+    tooltip = paste0(
+      "Team: ", Team, "<br>",
+      "Cluster: ", cluster, "<br>",
+      "Pythagorean Wins: ", round(pythW, 2), "<br>",
+      "Weighted WARSHARE: ", round(weighted_WARSHARE, 2)
+    ),
+    css_id = paste0("cluster-", Team)
+  )
+
+# Step 8: Create an interactive plot
+gg <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WARSHARE, color = factor(cluster))) +
+  geom_point_interactive(
+    aes(
+      tooltip = tooltip,
+      data_id = css_id
+    ),
+    size = 3
+  ) +
+  labs(
+    title = "Interactive Team Clustering Based on Performance Metrics",
+    x = "Pythagorean Wins",
+    y = "Weighted WARSHARE",
+    color = "Cluster"
+  ) +
+  theme_minimal()
+
+# Step 9: Customize and render the interactive plot
+interactive_plot <- girafe(ggobj = gg)
+interactive_plot <- girafe_options(
+  interactive_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"), # Highlight hovered points
+  opts_hover_inv(css = "opacity: 0.3;"), # De-emphasize non-hovered points
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;")
+)
+
+# Step 10: Print the interactive plot
+interactive_plot
+
+
+```
+
 
