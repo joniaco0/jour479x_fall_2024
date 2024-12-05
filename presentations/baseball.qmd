@@ -1,19 +1,17 @@
+Storywise:
+I'm looking for a way to figure out what teams are wasting talent. I want to open with the Angeles, it's the most 
 ```{r}
 library(tidyverse)
 library(dplyr)
 library(readr)
+library(fastDummies)
 baseball <- read.csv("https://raw.githubusercontent.com/joniaco0/jour479x_fall_2024/refs/heads/main/data/WARdata.csv")
 standings <- read.csv("https://raw.githubusercontent.com/joniaco0/jour479x_fall_2024/refs/heads/main/data/MLB_Data_with_Abbreviations%20-%20MLB_Data_with_Abbreviations.csv")
 standings <- standings |> rename(Team = Tm)
-standings
-```
-```{r}
 baseball$Season <- as.integer(baseball$Season)
 merged_data <- baseball |>
   left_join(standings, by = c("Team", "Season"))
 merged_data
-```
-```{r}
 merged_data$WAR <- as.numeric(merged_data$WAR)
 corrections <- merged_data |>
   mutate(Team = case_when(
@@ -34,31 +32,8 @@ standings <- standings |>
 maindata <- corrections |> select(Season, Name, PA, Team, WAR, pythW) |> mutate(WARSHARE = WAR/pythW)
 maindata |> arrange(desc(WARSHARE))
 ```
-```{r}
-ggplot() +
-geom_point(data = maindata, aes(x = pythW, y = WAR))
-```
-```{r}
-team_total_war <- maindata |>
-  group_by(Team) |>
-  summarize(Total_WAR = sum(Total_WAR), .groups = "drop") |>
-  arrange(desc(Total_WAR))
 
-war_summary <- war_summary |>
-  mutate(Team = factor(Team, levels = team_total_war$Team))
 
-# Plot the stacked bar chart
-ggplot(war_summary, aes(x = Team, y = Total_WAR, fill = Season)) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "Total WAR by Team and Season",
-    x = "Team",
-    y = "Total WAR",
-    fill = "Season"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
 ```{r}
 library(dplyr)
 library(ggplot2)
@@ -81,7 +56,7 @@ standings <- standings |>
 standings <- standings |>
   mutate(
     css_id = paste0("line-", Team),
-    Highlight = ifelse(Team == "LAA", "LAA", "Other")
+    Highlight = ifelse(Team == "LAA", "Highlighted", "Normal")
   )
 
 gg <- ggplot(standings, aes(
@@ -92,23 +67,29 @@ gg <- ggplot(standings, aes(
   geom_line_interactive(
     aes(
       color = Highlight,
-      alpha = ifelse(Highlight == "LAA", 1, 0.6),
-      size = ifelse(Highlight == "LAA", 1.2, 0.8),
-      tooltip = paste0("Team: ", Team, "<br>Season: ", Season, "<br>Cumulative Wins Above .500: ", CumulativeWinsAbove500),
+      alpha = ifelse(Highlight == "Highlighted", 1, 0.8),  # Adjust opacity for non-highlighted lines
+      tooltip = paste0("Team: ", Team, "<br>Season: ", Season, "<br>Cumulative Wins Above .500: ", round(CumulativeWinsAbove500, 2)),
       data_id = css_id
+    ),
+    size = ifelse(standings$Highlight == "Highlighted", 1.5, 1)  # Thicker line for LAA
+  ) +
+  scale_color_manual(
+    values = c(
+      "Highlighted" = "red",  # Highlighted team in red
+      "Normal" = "gray"       # Other teams in gray
     )
   ) +
-  scale_color_manual(values = c("LAA" = "red", "Other" = "blue")) +  # Slightly darker gray for clarity
-  scale_size_identity() +  # Map size directly without legend
+  scale_alpha_identity() +  # Map alpha values directly
   labs(
-    title = "Wins above .500 since 2000 (Highlighting LAA)",
+    title = "Interactive Wins Above .500 Since 2000 (Highlighting LAA)",
     x = "Season",
     y = "Cumulative Wins Above .500",
     color = "Team"
   ) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  # Rotate and adjust season labels
+    axis.title = element_text(size = 12),  # Larger axis titles
     legend.position = "bottom"
   )
 
@@ -119,7 +100,7 @@ custom_css <- "
     opacity: 1; 
   }
   .ggiraph-active line {
-    opacity: 0.2; /* Reduce opacity for non-hovered lines */
+    opacity: 0.8; /* Keep non-hovered lines more visible */
   }
   line:hover { 
     opacity: 1; 
@@ -132,19 +113,17 @@ interactive_plot <- girafe(ggobj = gg)
 interactive_plot <- girafe_options(
   interactive_plot,
   opts_hover(css = custom_css),
-  opts_hover_inv(css = "opacity: 0.2;")
+  opts_hover_inv(css = "opacity: 0.8;"),  # Higher opacity for non-hovered lines
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
 )
 
 # Print the interactive chart
 interactive_plot
 
-
 ```
 
 Here is the average WAR for each year. For simplicity sake, we will put it at two. 
-```{r}
-merged_data |> group_by(Season) |> summarize(mean(WAR))
-```
+
 ```{r}
 library(ggplot2)
 library(ggiraph)
@@ -235,28 +214,7 @@ interactive_plot <- girafe_options(
 interactive_plot
 
 ```
-```{r}
-library(ggplot2)
-library(dplyr)
 
-# Create a facet line chart
-ggplot(maindata, aes(x = Season, y = WAR, group = Name, color = Name)) +
-  geom_line() +
-  geom_point() +  # Optional: Add points to highlight individual values
-  facet_wrap(~ Name, scales = "free_y") +  # Create facets for each player
-  labs(
-    title = "Player WAR Over Seasons",
-    x = "Season",
-    y = "WAR",
-    color = "Player"
-  ) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(size = 12, face = "bold"),  # Style facet labels
-    axis.text.x = element_text(angle = 45, hjust = 1)   # Rotate x-axis labels for clarity
-  )
-
-```
 ```{r}
 library(ggplot2)
 library(dplyr)
@@ -299,78 +257,29 @@ team_stats <- maindata |>
   )
 
 ```
-```{r}
-# Load necessary libraries
-library(dplyr)
-library(ggplot2)
-library(fastDummies)
-
-# Step 1: One-hot encode the Team column
-team_stats_encoded <- team_stats |>
-  dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
-
-# Step 2: Ensure all columns are numeric
-team_stats_encoded <- team_stats_encoded |>
-  mutate(across(everything(), as.numeric))
-
-# Step 3: Handle NA, NaN, and Inf values
-team_stats_encoded <- team_stats_encoded |>
-  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> # Replace NA with column mean
-  mutate(across(everything(), ~ ifelse(is.infinite(.), max(.[!is.infinite(.)], na.rm = TRUE), .))) # Replace Inf with max
-
-# Step 4: Scale the data
-scaled_data <- team_stats_encoded |>
-  select(total_WAR, weighted_WAR, weighted_WARSHARE, pythW, starts_with("Team_")) |>
-  scale()
-
-# Step 5: Perform K-means clustering
-set.seed(42)  # Ensure reproducibility
-clusters <- kmeans(scaled_data, centers = 4)
-
-# Step 6: Add cluster labels back to the dataset
-team_stats_clustered <- team_stats_encoded |>
-  mutate(cluster = clusters$cluster)
-
-# Step 7: Visualize the clusters
-ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WARSHARE, color = factor(cluster))) +
-  geom_point(size = 3) +
-  labs(
-    title = "Team Clustering Based on Performance Metrics",
-    x = "Pythagorean Wins",
-    y = "Weighted WARSHARE",
-    color = "Cluster"
-  ) +
-  theme_minimal()
-
-```
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(ggiraph)
-library(fastDummies)
-
 # Step 1: One-hot encode the Team column (retain the original Team column)
 team_stats_encoded <- team_stats |>
   dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = FALSE)
 
-# Step 2: Ensure numeric columns are numeric, but keep Team as character
+# Step 2: Ensure numeric columns are numeric, but keep Team and Season as character
 team_stats_encoded <- team_stats_encoded |>
-  mutate(across(-Team, as.numeric))  # Convert all columns except Team to numeric
+  mutate(across(-c(Team, Season), as.numeric))  # Convert all columns except Team and Season to numeric
 
 # Step 3: Handle NA, NaN, and Inf values
 team_stats_encoded <- team_stats_encoded |>
-  mutate(across(-Team, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> # Replace NA with column mean
-  mutate(across(-Team, ~ ifelse(is.infinite(.), max(.[!is.infinite(.)], na.rm = TRUE), .))) # Replace Inf with max
+  mutate(across(-c(Team, Season), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> # Replace NA with column mean
+  mutate(across(-c(Team, Season), ~ ifelse(is.infinite(.), max(.[!is.infinite(.)], na.rm = TRUE), .))) # Replace Inf with max
 
-# Step 4: Scale the data (excluding Team)
+# Step 4: Scale the data (excluding Team and Season)
 scaled_data <- team_stats_encoded |>
   select(total_WAR, weighted_WAR, weighted_WARSHARE, pythW, starts_with("Team_")) |>
   scale()
 
 # Step 5: Perform K-means clustering
 set.seed(42)  # Ensure reproducibility
-clusters <- kmeans(scaled_data, centers = 5)
+clusters <- kmeans(scaled_data, centers = 8)
 
 # Step 6: Add cluster labels back to the dataset
 team_stats_clustered <- team_stats_encoded |>
@@ -381,15 +290,17 @@ team_stats_clustered <- team_stats_clustered |>
   mutate(
     tooltip = paste0(
       "Team: ", Team, "<br>",
+      "Season: ", Season, "<br>",
       "Cluster: ", cluster, "<br>",
       "Pythagorean Wins: ", round(pythW, 2), "<br>",
-      "Weighted WARSHARE: ", round(weighted_WARSHARE, 2)
+      "Weighted WARSHARE: ", round(weighted_WARSHARE, 2), "<br>",
+      "Weighted WAR: ", round(weighted_WAR, 2)
     ),
-    css_id = paste0("cluster-", Team)
+    css_id = paste0("cluster-", Team, "-", Season)
   )
 
-# Step 8: Create an interactive plot
-gg <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WARSHARE, color = factor(cluster))) +
+# Step 8: Create an interactive plot with Weighted WAR as the y-axis
+gg <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = factor(cluster))) +
   geom_point_interactive(
     aes(
       tooltip = tooltip,
@@ -398,9 +309,9 @@ gg <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WARSHARE, color =
     size = 3
   ) +
   labs(
-    title = "Interactive Team Clustering Based on Performance Metrics",
+    title = "Interactive Team Clustering: Weighted WAR vs. Pythagorean Wins",
     x = "Pythagorean Wins",
-    y = "Weighted WARSHARE",
+    y = "Weighted WAR",
     color = "Cluster"
   ) +
   theme_minimal()
@@ -414,9 +325,260 @@ interactive_plot <- girafe_options(
   opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;")
 )
 
-# Step 10: Print the interactive plot
+# Step 10: Display the interactive plot
 interactive_plot
 
+
+```
+```{r}
+cluster_summary <- team_stats_clustered |>
+  group_by(cluster) |>
+  summarize(
+    avg_pythW = mean(pythW),
+    avg_WARSHARE = mean(weighted_WARSHARE),
+    avg_WAR = mean(total_WAR),
+    total_teams = n()
+  )
+cluster_summary
+```
+```{r}
+# Create an interactive plot with updated tooltip, best-fit line, and cluster highlighting
+gg_cluster <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = factor(cluster))) +
+  geom_point_interactive(
+    aes(
+      tooltip = paste0(
+        "Team: ", Team, "<br>",
+        "Season: ", Season, "<br>",
+        "Cluster: ", cluster, "<br>",
+        "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
+        "PythW: ", round(pythW, 2)
+      ),
+      data_id = cluster  # Ensure the entire cluster is highlighted
+    ),
+    size = 3
+  ) +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
+  labs(
+    title = "Interactive Team Clustering: Weighted WAR vs. Pythagorean Wins",
+    x = "Pythagorean Wins",
+    y = "Weighted WAR",
+    color = "Cluster"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",       # Move legend to bottom
+    plot.title = element_text(size = 14, face = "bold"),  # Title formatting
+    plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
+  )
+
+# Make the interactive plot fit the screen and support cluster highlighting
+interactive_cluster_plot <- girafe(ggobj = gg_cluster, width_svg = 10, height_svg = 6)
+interactive_cluster_plot <- girafe_options(
+  interactive_cluster_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"), # Highlight hovered cluster
+  opts_hover_inv(css = "opacity: 0.3;"), # De-emphasize non-hovered clusters
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
+)
+
+# Display the interactive cluster plot
+interactive_cluster_plot
+
+```
+```{r}
+# Add a highlight column for STL team
+team_stats_clustered <- team_stats_clustered |>
+  mutate(highlight_STL = ifelse(Team == "STL", "Highlighted: STL", "Other Teams"))
+
+# Create an interactive plot highlighting STL
+gg_stl <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = highlight_STL)) +
+  geom_point_interactive(
+    aes(
+      tooltip = paste0(
+        "Team: ", Team, "<br>",
+        "Season: ", Season, "<br>",
+        "Cluster: ", cluster, "<br>",
+        "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
+        "PythW: ", round(pythW, 2)
+      ),
+      data_id = css_id
+    ),
+    size = 3
+  ) +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
+  scale_color_manual(
+    values = c("Highlighted: STL" = "red", "Other Teams" = "grey")
+  ) +
+  labs(
+    title = "Interactive Plot Highlighting STL Team",
+    x = "Pythagorean Wins",
+    y = "Weighted WAR",
+    color = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",       # Move legend to bottom
+    plot.title = element_text(size = 14, face = "bold"),  # Title formatting
+    plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
+  )
+
+# Make the interactive plot fit the screen
+interactive_stl_plot <- girafe(ggobj = gg_stl, width_svg = 10, height_svg = 6)
+interactive_stl_plot <- girafe_options(
+  interactive_stl_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"), # Highlight hovered points
+  opts_hover_inv(css = "opacity: 0.3;"), # De-emphasize non-hovered points
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
+)
+
+# Display the interactive STL plot
+interactive_stl_plot
+
+```
+
+```{r}
+# Create an interactive plot highlighting teams on hover
+gg_team <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = Team)) +
+  geom_point_interactive(
+    aes(
+      tooltip = paste0(
+        "Team: ", Team, "<br>",
+        "Season: ", Season, "<br>",
+        "Cluster: ", cluster, "<br>",
+        "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
+        "PythW: ", round(pythW, 2)
+      ),
+      data_id = Team  # Highlight all points of the same team
+    ),
+    size = 3
+  ) +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
+  labs(
+    title = "Interactive Plot Highlighting Each Team Abbreviation",
+    x = "Pythagorean Wins",
+    y = "Weighted WAR",
+    color = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",       # Move legend to bottom
+    plot.title = element_text(size = 14, face = "bold"),  # Title formatting
+    plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
+  )
+
+# Make the interactive plot fit the screen and highlight teams
+interactive_team_plot <- girafe(ggobj = gg_team, width_svg = 10, height_svg = 6)
+interactive_team_plot <- girafe_options(
+  interactive_team_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"), # Highlight hovered team
+  opts_hover_inv(css = "opacity: 0.3;"), # De-emphasize non-hovered teams
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
+)
+
+# Display the interactive plot
+interactive_team_plot
+
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Group by Team and Season: Calculate residuals for each team-season combination
+team_season_residuals <- team_stats |>
+  filter(!is.na(weighted_WAR) & !is.na(pythW)) |>  # Remove missing values
+  group_by(Season) |>
+  group_split() |>  # Split data by Season to fit models separately
+  purrr::map_dfr(~ {
+    # Fit the model for each season
+    fit_model <- lm(pythW ~ weighted_WAR, data = .x)
+    .x |>
+      mutate(
+        predicted_pythW = predict(fit_model, newdata = .x),  # Predicted PythW
+        residual = pythW - predicted_pythW                  # Residuals
+      )
+  }) |>
+  group_by(Team, Season) |>
+  summarize(
+    total_residual = sum(residual, na.rm = TRUE),
+    avg_residual = mean(residual, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+library(ggplot2)
+library(ggiraph)
+
+# Create the ggplot object with team-based highlighting
+gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual, fill = Team)) +
+  geom_bar_interactive(
+    stat = "identity",
+    position = "dodge",
+    aes(
+      tooltip = paste0(
+        "Team: ", Team, "<br>",
+        "Season: ", Season, "<br>",
+        "Average Residual: ", round(avg_residual, 2)
+      ),
+      data_id = Team  # Set data_id to Team for group-based highlighting
+    ),
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Interactive Average Residuals by Team and Season",
+    x = "Season",
+    y = "Average Residuals",
+    fill = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    legend.position = "bottom",
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 12)
+  )
+
+# Create an interactive chart with ggiraph
+interactive_chart <- girafe(ggobj = gg)
+interactive_chart <- girafe_options(
+  interactive_chart,
+  opts_hover(css = "stroke-width: 2px; fill-opacity: 1;"),  # Highlight hovered team
+  opts_hover_inv(css = "opacity: 0.2;"),  # De-emphasize non-hovered teams
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;")
+)
+
+
+# Display the interactive chart
+interactive_chart
+
+
+# Group by Team Regardless of Season: Aggregate residuals over all seasons
+team_total_residuals <- team_season_residuals |>
+  group_by(Team) |>
+  summarize(
+    total_residual = sum(total_residual, na.rm = TRUE),
+    avg_residual = mean(total_residual, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Visualization: Total Residuals by Team
+ggplot(team_total_residuals, aes(x = reorder(Team, -total_residual), y = total_residual, fill = Team)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Total Residuals by Team (All Seasons Combined)",
+    x = "Team",
+    y = "Total Residuals",
+    fill = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+```
+
+```{r}
 
 ```
 
