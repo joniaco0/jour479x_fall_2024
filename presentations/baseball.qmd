@@ -113,7 +113,7 @@ interactive_plot <- girafe(ggobj = gg)
 interactive_plot <- girafe_options(
   interactive_plot,
   opts_hover(css = custom_css),
-  opts_hover_inv(css = "opacity: 0.8;"),  # Higher opacity for non-hovered lines
+  opts_hover_inv(css = "opacity: 0.2;"),  # Higher opacity for non-hovered lines
   opts_sizing(rescale = TRUE)  # Ensure responsiveness
 )
 
@@ -260,8 +260,7 @@ team_stats <- maindata |>
 
 ```{r}
 # Step 1: One-hot encode the Team column (retain the original Team column)
-team_stats_encoded <- team_stats |>
-  dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = FALSE)
+team_stats_encoded <- team_stats |>x dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = FALSE)
 
 # Step 2: Ensure numeric columns are numeric, but keep Team and Season as character
 team_stats_encoded <- team_stats_encoded |>
