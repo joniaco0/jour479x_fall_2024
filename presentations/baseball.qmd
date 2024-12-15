@@ -1,14 +1,20 @@
-Storywise:
-Storywise:
+Jonathan Iacovacci - Final Presentation
+
+Note: To better read this presentation, collapse the code and run the graphics by themselves. There is a seperate R code to show the graphic. 
+
 In 2011, the movie Moneyball was released, prompting people like myself to look at baseball a whole different way. The movie was based on the 2002 Oakland Athletics, who won 20 straight games, at the time an AL record on a team that was limited financially. This got me thinking, what teams have optimized talent, and what teams have wasted talent?
 
 Well, to start lets look at two teams that started one way and ended another. The Florida Marlins and the Oakland Athletics. 
 
-In 2003, the Marlins beat the Yankees in the World Series, off the backs of rookie of the year Miguel Cabrera and MVP vote recievers Luis Castillo, Mike Lowell, Ivan Rodríguez and other players. 
+In 2003, the Marlins beat the Yankees in the World Series, off the backs of rookie of the year Miguel Cabrera and MVP vote recievers Luis Castillo, Mike Lowell, Ivan Rodriguez and other players. 
 
 But since this World Series, the teams have headed in two opposite directions. In terms of hitting talent, The Marlins have done less with more, and the A's have done more with less.
 
-To calculate this, I set parameters of culumative wins above .500, and culumative WAR over 2 for the average player.
+So let's look into what that means. I'm working with three statistics, first is Pythagorean Wins(PythW), which is a metric that looks into the "true wins" a team earned through runs allowed and runs scored. So a team like the 2021 San Francisco Giants can win 108 games, but certain wins might be downgraded by the Pytheagreon system. The other is Wins Above Replacement or "WAR", a statistic that calculates the wins above a replacement level player. This is a baseline to see how valuable a player is to their team. 
+
+For this dataset, I collected data from over 6,000 players who had over 300 plate appearances in a given season since 2000. This is close to half of a full season a player can play, which would warrant an All-Star appearance if they only played the first half of the season. I didn't filter by just qualified hitters in order to make things fair for those who were injured mid season, or players who weren't good enough to warrant 500 plate appearances. This is ONLY hitter data, which means the data being analyzed is a "waste" of hitter talent, so it doesn't necessarily mean a team is "unlucky". But to win games, you need to score runs so the premise still stands. 
+
+Now to the A's and Marlins. 
 ```{r}
 library(tidyverse)
 library(dplyr)
@@ -30,19 +36,42 @@ corrections <- merged_data |>
     Team %in% c("WSN", "MON") ~ "WSN",
     TRUE ~ Team # Keep other teams unchanged
   ))
-standings <- standings |>
-  mutate(Team = case_when(
-    Team %in% c("FLA", "MIA") ~ "MIA",
-    Team %in% c("ANA", "LAA") ~ "LAA",
-    Team %in% c("TBR", "TBD") ~ "TBR",
-    Team %in% c("WSN", "MON") ~ "WSN",
-    TRUE ~ Team # Keep other teams unchanged
-  ))
-
 maindata <- corrections |> select(Season, Name, PA, Team, WAR, pythW,pythL) |> mutate(WARSHARE = WAR/pythW)
+maindata <- maindata %>%
+  distinct(Team, Season, Name, .keep_all = TRUE)  # Keeps the first occurrence of duplicates
+
 library(dplyr)
 library(ggiraph)
 library(ggplot2)
+# Process data to avoid double counting
+combined_data <- maindata %>%
+  filter(Season >= 2000) %>%
+  mutate(
+    WinsAbove500 = pythW - 0.5 * (pythW + pythL),
+    Relative_WAR = WAR - 2
+  ) %>%
+  group_by(Team, Season) %>%
+  summarize(
+    Total_WinsAbove500 = sum(WinsAbove500, na.rm = TRUE),
+    Total_Relative_WAR = sum(Relative_WAR, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(Team, Season) %>%
+  group_by(Team) %>%
+  mutate(
+    CumulativeWinsAbove500 = cumsum(Total_WinsAbove500),
+    CumulativeRelativeWAR = cumsum(Total_Relative_WAR),
+    Highlight = ifelse(Team == "MIA" | Team == "OAK", "Highlighted", "Normal"),
+    css_id = paste0("line-", Team)
+  ) %>%
+  ungroup()
+
+long_data <- combined_data |>
+  pivot_longer(
+    cols = c(CumulativeWinsAbove500, CumulativeRelativeWAR),
+    names_to = "Metric",
+    values_to = "CumulativeValue"
+  )
 
 # Interactive ggplot object with original lines
 gg_combined <- ggplot(long_data, aes(
@@ -70,7 +99,7 @@ gg_combined <- ggplot(long_data, aes(
   scale_alpha_identity() +  # Map alpha values directly
   facet_wrap(~ Metric, scales = "free_y", ncol = 1) +  # Separate panels for each metric
   labs(
-    title = "Cumulative Wins Above .500 and WAR Over 2 (Interactive)",
+    title = "The Marlins and A's drift apart from each other",
     x = "Season",
     y = "Cumulative Value",
     color = "Team"
@@ -112,19 +141,21 @@ interactive_combined_plot <- girafe_options(
   ),
   opts_sizing(rescale = TRUE, width = 0.7)  # Fit graph to RStudio Viewer
 )
-
-# Display the interactive plot
-interactive_combined_plot
-
-
-
-
 ```
-Look at how these graphs converge with WAR and Diverge with wins. According to hitting talent, both teams sat around the middle of an average of 2 WAR for around 2 decades, with recent skids causing them to drop off 
+```{r}
+interactive_combined_plot
+```
 
+
+These charts read very simliar. For the WAR chart, the y-intercept is a cumulative average WAR of 2. This is the average of the past 24 years of the dataset, so if you are above the y-intercept, your hitters are more valuable and if your below your players are not. Same goes for the .500 graph. If your team had above 82 PythW, you are above the Y-intercept.
+
+So when looking at the two highlighted lines, you can see their talents float around the y-intercept, meaning they have around average hitters year over year. 
+
+The same story cannot be said for the A's and the Marlins. Since 2003, the Oakland A's have gone to the playoffs seven times and three straight years from 2012 to 2014. In that same time period, it took the Marlins 17 years to get to the playoffs, and that was with an expanded 2020. It took 20 years after their 2003 World Series to make it back to a non-COVID playoff apperance.
+
+While this can be visualized by the line chart, it can also be quantified (and then visualized again). By normalizing this data, we can take the residuals from Relative WAR and Wins Above 500 to measure the discrepenacies. Low and behold, our top ranked outliers are Oakland on the over performing side and the Marlins on the under performing side.
 
 ```{r}
-# Normalize the metrics for comparison
 normalized_data <- combined_data |>
   mutate(
     Norm_WinsAbove500 = (CumulativeWinsAbove500 - min(CumulativeWinsAbove500)) / 
@@ -148,25 +179,6 @@ team_discrepancies <- normalized_data |>
   ) |>
   arrange(desc(Total_Difference))
 
-# Highlight teams with consistently high positive differences
-highlighted_teams <- team_discrepancies |>
-  filter(Avg_Difference > quantile(Avg_Difference, 0.75))  # Top quartile of "wasted" talent
-# Bar chart of total differences
-ggplot(team_discrepancies, aes(x = reorder(Team, -Total_Difference), y = Total_Difference, fill = Total_Difference > 0)) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "Teams with the Largest Discrepancies Between WAR and Wins",
-    x = "Team",
-    y = "Total Difference",
-    fill = "Wasted Talent"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
-```{r}
-# Line chart showing differences over seasons
-library(ggiraph)
 # Interactive line chart with custom highlights
 interactive_chart <- ggplot(normalized_data, aes(x = Season, y = Difference, group = Team)) +
   geom_line_interactive(
@@ -216,15 +228,67 @@ girafe_plot <- girafe_options(
 )
 
 # Display the interactive chart
+
+```
+
+```{r}
 girafe_plot
 ```
 
+This graph is esentially flipped on it's head, the further down you are the more you "over perform", the more up you are the more you are under performing. The trajectories of these lines tell really intresting stories. The A's sprial back towards the mean comes after impressive seasons that made them an outlier on this chart. But you can see how the past three years they've severly under performed the low expectations they already had.
+
+The Marlins were on the steady climb until a big lump in 2017.
 
 In 2017, Giancarlo Stanton hit 59 home runs in one season. The seventh most an NL player has hit in league history. This campaign led to becoming the first MVP in Florida/Miami Marlins history. This team also sported talents from future MVP Christian Yelich, and All-Stars Marcell Ozuna, J.T Realmuto, Dee Gordon and the dwindling career of Ichiro Suzuki on the bench. The problem was, they sported one of the worst pitching staffs in the league, sporting an average ERA of almost five runs per nine innings.
 
 This season doesn't stick out like a sore thumb for no reason. Looking at teams that "waste" offensive talent, the data shows that this Miami Marlins team wasted the most amount offensive talent of any team in the last 24 years when looking at Cumulative WAR and Expected (Pythagorean) Wins. 
+```{r}
+# Create the interactive plot with OAK in green, MIA in blue, and others in gray
+gg_cluster <- ggplot(team_stats, aes(x = pythW, y = weighted_WAR)) +
+  geom_point_interactive(
+    aes(
+      color = ifelse(
+        Team == "OAK", "green",
+        ifelse(Team == "MIA", "blue", "gray")
+      ),
+      tooltip = paste0(
+        "Team: ", Team, "<br>",
+        "Season: ", Season, "<br>",
+        "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
+        "PythW: ", round(pythW, 2)
+      ),
+      data_id = Team  # Highlight hover based on team
+    ),
+    size = 3
+  ) +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
+  scale_color_identity(guide = "none") +  # Suppress the default legend
+  labs(
+    title = "Interactive Team Data: Weighted WAR vs. Pythagorean Wins",
+    x = "Pythagorean Wins",
+    y = "Weighted WAR"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  # No legend since we're using identity colors
+    plot.title = element_text(size = 14, face = "bold"),  # Title formatting
+    plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
+  )
+
+# Create the interactive plot with hover highlighting
+interactive_cluster_plot <- girafe(ggobj = gg_cluster, width_svg = 10, height_svg = 6)
+interactive_cluster_plot <- girafe_options(
+  interactive_cluster_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"),  # Highlight hovered points
+  opts_hover_inv(css = "opacity: 0.3;"),  # De-emphasize non-hovered points
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
+)
+
+# Display the interactive cluster plot
 
 
+```
 
 ```{r}
 # Group by Team and Season: Calculate residuals for each team-season combination
@@ -248,10 +312,12 @@ team_season_residuals <- team_stats |>
     .groups = "drop"
   )
 
+
 library(ggplot2)
 library(ggiraph)
-# Create the ggplot object with specific highlighting for 2017 Marlins
-gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual, fill = Team)) +
+
+# Create the ggplot object with specific highlighting and thicker lines
+gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual)) +
   geom_bar_interactive(
     stat = "identity",
     position = "dodge",
@@ -262,9 +328,14 @@ gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual, fill = Tea
         "Average Residual: ", round(avg_residual, 2)
       ),
       data_id = paste(Team, Season),
-      fill = ifelse(Team == "MIA" & Season == 2017, "red", "green")
+      fill = ifelse(
+        Team == "MIA" & Season == 2017, "red",  # Highlight 2017 MIA in red
+        ifelse(Team == "MIA", "blue",           # Highlight other MIA in blue
+        ifelse(Team == "OAK", "green", "gray")) # Highlight OAK in green, others in gray
+      )
     ),
-    alpha = 0.9
+    alpha = 0.9,
+    size = 1.2  # Adjust line thickness here
   ) +
   scale_fill_identity(
     guide = guide_legend(
@@ -272,7 +343,7 @@ gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual, fill = Tea
     )
   ) +
   labs(
-    title = "The 2017 Miami Marlins wasted an immense amount of talent",
+    title = "PythW Vs. WAR Residuals",
     x = "Season",
     y = "Average Residuals",
     fill = "Team"
@@ -286,39 +357,97 @@ gg <- ggplot(team_season_residuals, aes(x = Season, y = avg_residual, fill = Tea
     plot.title = element_text(size = 14, face = "bold"),
     axis.title = element_text(size = 12)
   )
-interactive_chart <- girafe(ggobj = gg)
-interactive_chart <- girafe_options(
-  interactive_chart,
+
+interactive_2chart <- girafe(ggobj = gg)
+interactive_2chart <- girafe_options(
+  interactive_2chart,
   opts_hover(css = "stroke-width: 2px; fill-opacity: 1;"),
   opts_hover_inv(css = "opacity: 0.2;"),
   opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;")
 )
-
-# Display the interactive chart
-interactive_chart
+```
+```{r}
+interactive_cluster_plot
+interactive_2chart
 
 ```
 
+On the opposite side of the spectrum the 2014 Oakland A's story is weird to show up as one of the highest residuals. This season has 11 more Pythagorean wins than actual wins, and while they made the playoffs, they didn't have much to show for it. The 2014 A's had four All-Stars, and their actual record does reflect a team of their offensive caliber. But the A's were able to really put on runs when they did win, inflating their PythW. This outlier points to how the hypothesis of "wasting" talent isn't one-to-one
 
-
-
-
-
-
+Finally, let's see from these two teams who benefited and suffered the most.
 ```{r}
-maindata$PA <- as.numeric(maindata$PA) 
-team_stats <- maindata |>
-  group_by(Season, Team) |>
-  summarize(
-    total_WAR = sum(WAR),
-    weighted_WAR = weighted.mean(WAR, w = PA, na.rm = TRUE),       # Weighted WAR
-    weighted_WARSHARE = weighted.mean(WARSHARE, w = PA, na.rm = TRUE),  # Weighted WARSHARE
-    high_contributors = sum(WARSHARE > 0.07),
-    pythW = mean(pythW, na.rm = TRUE)  # Average Pythagorean Wins
+
+
+# Create the interactive scatter plot
+library(ggplot2)
+library(ggiraph)
+library(dplyr)
+
+# Replace single quotes with double quotes or remove them in tooltip text
+merged_data <- merged_data %>%
+  mutate(
+    Name_clean = gsub("'", "`", Name),  # Replace single quotes with backticks
+    tooltip_text = paste0(
+      "Name: ", Name_clean, "<br>",
+      "Team: ", Team, "<br>",
+      "Season: ", Season, "<br>",
+      "WAR: ", round(WAR, 2), "<br>",
+      "PythW: ", round(pythW, 2)
+    )
   )
 
+# Create the interactive scatter plot
+gg_plot <- ggplot(merged_data, aes(x = pythW, y = WAR)) +
+  geom_point_interactive(
+    aes(
+      color = ifelse(
+        Name == "Giancarlo Stanton", "red",  # Highlight Giancarlo Stanton in red
+        ifelse(Team == "MIA", "blue", 
+        ifelse(Team == "OAK", "green", "gray"))
+      ),
+      alpha = ifelse(Team %in% c("MIA", "OAK") | Name == "Giancarlo Stanton", 1, 0.2),  # MIA, OAK, and Stanton fully opaque
+      tooltip = tooltip_text,  # Use the cleaned tooltip text
+      data_id = Name_clean  # Use cleaned names for data_id
+    ),
+    size = 3
+  ) +
+  labs(
+    title = "Interactive PythW vs. WAR Plot (Highlighting Giancarlo Stanton)",
+    x = "Pythagorean Wins (PythW)",
+    y = "WAR",
+    color = "Highlights"
+  ) +
+  scale_color_identity() +
+  scale_alpha_identity() +  # Use alpha values from data
+  theme_minimal() +
+  theme(
+    legend.position = "none", 
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+# Adjust size to fit within RStudio boundaries
+interactive_plot <- girafe(ggobj = gg_plot, width_svg = 8, height_svg = 5)  # Adjusted for RStudio
+interactive_plot <- girafe_options(
+  interactive_plot,
+  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"),  # Highlight hovered points
+  opts_hover_inv(css = "opacity: 0.2;"),  # Reduce visibility of non-hovered points
+  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
+  opts_sizing(rescale = TRUE)  # Ensure responsiveness
+)
+
+# Display the interactive scatterplot
+interactive_plot
+
+
 ```
-Moving on to each season, how do you classify and cluster these seasons to find outliers? By weighting WARSHARE(WAR/PythW), weighted WAR (WAR with plate apperances weighted more heavily), the total WAR of the team, the pythW and the high contrbutors (players with over 7%) WARSHARE, grouping these teams to find the ones that
+In the red is Giancarlo Stanton. Keep in mind the one season he was on a team that was over 100 PythW was the Yankees. Stanton is an outlier in the case that he was one of the main pushers of that terrible 2017 team. But this shows he's not a total outlier. 
+
+But while Stanton had a historic season, he did so as a DH. This graph would show on the top left, 2022 Sean Murphy, who had a 5+ WAR season on a 60 pythW team suffered the most out of these two teams.
+
+But it all comes full circle at the end. Jason Giambi, one of the main players Billy Beane looked to replace in Moneyball was a player sitting as an outlier in 2001, waiting for a team with more talent and one that would win more games.
+
+
+*PLEASE DISREGARD SAVING CLUSTERING CODE FOR FUTURE REFERENCE
 ```{r}
 # Step 1: One-hot encode the Team column (retain the original Team column)
 team_stats_encoded <- team_stats |> dummy_cols(select_columns = "Team", remove_first_dummy = TRUE, remove_selected_columns = FALSE)
@@ -373,10 +502,17 @@ cluster_summary
 ```
 
 ```{r}
-# Create an interactive plot with updated tooltip, best-fit line, and cluster highlighting
-gg_cluster <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = factor(cluster))) +
+library(ggplot2)
+library(ggiraph)
+
+# Create the interactive plot with OAK in green and MIA in blue
+gg_cluster <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR)) +
   geom_point_interactive(
     aes(
+      color = ifelse(
+        Team == "OAK", "green", 
+        ifelse(Team == "MIA", "blue", factor(cluster))  # Assign blue for MIA
+      ),
       tooltip = paste0(
         "Team: ", Team, "<br>",
         "Season: ", Season, "<br>",
@@ -384,16 +520,20 @@ gg_cluster <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, colo
         "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
         "PythW: ", round(pythW, 2)
       ),
-      data_id = cluster  # Ensure the entire cluster is highlighted
+      data_id = Team  # Highlight by Team
     ),
     size = 3
   ) +
   geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
+  scale_color_identity(
+    guide = "legend",
+    labels = c("OAK" = "Oakland Athletics", "MIA" = "Miami Marlins", "Other Clusters" = "Cluster")
+  ) +
   labs(
     title = "Interactive Team Clustering: Weighted WAR vs. Pythagorean Wins",
     x = "Pythagorean Wins",
     y = "Weighted WAR",
-    color = "Cluster"
+    color = "Cluster / Highlight"
   ) +
   theme_minimal() +
   theme(
@@ -402,7 +542,7 @@ gg_cluster <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, colo
     plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
   )
 
-# Make the interactive plot fit the screen and support cluster highlighting
+# Create the interactive plot
 interactive_cluster_plot <- girafe(ggobj = gg_cluster, width_svg = 10, height_svg = 6)
 interactive_cluster_plot <- girafe_options(
   interactive_cluster_plot,
@@ -416,150 +556,9 @@ interactive_cluster_plot <- girafe_options(
 interactive_cluster_plot
 
 ```
-```{r}
-# Add a highlight column for STL team
-team_stats_clustered <- team_stats_clustered |>
-  mutate(highlight_STL = ifelse(Team == "STL", "Highlighted: STL", "Other Teams"))
-
-# Create an interactive plot highlighting STL
-gg_stl <- ggplot(team_stats_clustered, aes(x = pythW, y = weighted_WAR, color = highlight_STL)) +
-  geom_point_interactive(
-    aes(
-      tooltip = paste0(
-        "Team: ", Team, "<br>",
-        "Season: ", Season, "<br>",
-        "Cluster: ", cluster, "<br>",
-        "Weighted WAR: ", round(weighted_WAR, 2), "<br>",
-        "PythW: ", round(pythW, 2)
-      ),
-      data_id = css_id
-    ),
-    size = 3
-  ) +
-  geom_smooth(method = "lm", color = "black", linetype = "dashed", se = FALSE) +  # Line of best fit
-  scale_color_manual(
-    values = c("Highlighted: STL" = "red", "Other Teams" = "grey")
-  ) +
-  labs(
-    title = "Interactive Plot Highlighting STL Team",
-    x = "Pythagorean Wins",
-    y = "Weighted WAR",
-    color = "Legend"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",       # Move legend to bottom
-    plot.title = element_text(size = 14, face = "bold"),  # Title formatting
-    plot.margin = margin(10, 10, 10, 10)  # Adjust margins to fit the screen
-  )
-
-# Make the interactive plot fit the screen
-interactive_stl_plot <- girafe(ggobj = gg_stl, width_svg = 10, height_svg = 6)
-interactive_stl_plot <- girafe_options(
-  interactive_stl_plot,
-  opts_hover(css = "stroke-width: 3px; fill-opacity: 1;"), # Highlight hovered points
-  opts_hover_inv(css = "opacity: 0.3;"), # De-emphasize non-hovered points
-  opts_tooltip(css = "background-color: white; color: black; border: 1px solid black; padding: 5px;"),
-  opts_sizing(rescale = TRUE)  # Ensure responsiveness
-)
-
-# Display the interactive STL plot
-interactive_stl_plot
-
-```
-
-```{r}
-library(dplyr)
-library(ggiraph)
-library(ggplot2)
-
-# Compute smoothed values separately for interactive use
-smoothed_data <- long_data %>%
-  group_by(Team, Metric) %>%
-  arrange(Season) %>%
-  mutate(SmoothedValue = loess(CumulativeValue ~ as.numeric(Season), data = cur_data(), span = 0.3)$fitted) %>%
-  ungroup()
-
-# Interactive ggplot object with precomputed smooth lines
-gg_combined <- ggplot(smoothed_data, aes(
-  x = Season,
-  y = SmoothedValue,
-  group = Team
-)) +
-  geom_line_interactive(
-    aes(
-      color = ifelse(Team == "MIA", "MIA",
-              ifelse(Team == "OAK", "OAK", "Other")),  # Highlight specific teams
-      alpha = ifelse(Team %in% c("MIA", "OAK"), 1, 0.3),  # Adjust opacity
-      tooltip = Team,  # Tooltip only displays the team name
-      data_id = Team   # Identifier for interactivity
-    ),
-    size = ifelse(smoothed_data$Team %in% c("MIA", "OAK"), 1.5, 0.8)  # Thicker lines for MIA and OAK
-  ) +
-  scale_color_manual(
-    values = c(
-      "MIA" = "blue",   # Highlight MIA in blue
-      "OAK" = "green",  # Highlight OAK in green
-      "Other" = "gray"  # All other teams in gray
-    )
-  ) +
-  scale_alpha_identity() +  # Map alpha values directly
-  facet_wrap(~ Metric, scales = "free_y", ncol = 1) +  # Separate panels for each metric
-  labs(
-    title = "Cumulative Wins Above .500 and WAR Over 2 (Interactive)",
-    x = "Season",
-    y = "Smoothed Cumulative Value",
-    color = "Team"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  # Rotate and adjust season labels
-    axis.title = element_text(size = 12),  # Larger axis titles
-    legend.position = "bottom",
-    strip.text = element_text(size = 14, face = "bold")  # Emphasize facet titles
-  )
-
-# Custom CSS for hover effects
-custom_css <- "
-  .ggiraph-hover { 
-    stroke-width: 3px; 
-    opacity: 1; 
-  }
-  .ggiraph-active line {
-    opacity: 0.5; /* Keep non-hovered lines more visible */
-  }
-  line:hover { 
-    opacity: 1; 
-    stroke-width: 3px; 
-  }
-"
-
-# Convert ggplot to interactive ggiraph object
-interactive_combined_plot <- girafe(ggobj = gg_combined)
-
-# Add interactivity options
-interactive_combined_plot <- girafe_options(
-  interactive_combined_plot,
-  opts_hover(css = custom_css),
-  opts_hover_inv(css = "opacity: 0.2;"),
-  opts_tooltip(
-    opacity = 0.9,
-    css = "background-color: white; padding: 5px; border: 1px solid gray; border-radius: 5px; font-size: 12px;"
-  ),
-  opts_sizing(rescale = TRUE, width = 0.7)  # Fit graph to RStudio Viewer
-)
-
-# Display the interactive plot
-interactive_combined_plot
-
-   
 
 
-```
 
-```{r}
-
-```
 
 
 
